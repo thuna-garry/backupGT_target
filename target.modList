@@ -3,7 +3,8 @@
 ############################################################################
 # load global configuration
 ############################################################################
-. ${0%.*}.conf
+. ${0%/*}/target.conf
+
 
 #-------------------------------------------------------------------------------
 # - data lines consist of two fields (moduleName, comment) separated by a tab
@@ -11,7 +12,7 @@
 # - each comment may contain the following options
 #   method    scope: all            suppliedBy: targetHost (required)
 #   auto      scope: any            suppliedBy: targetHost (optional)
-#   relVol    scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
+#   relDS     scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
 #   origHost  scope: rsync,tar      suppliedBy: targetHost (optional)
 #   origMod   scope: rsync,tar      suppliedBy: targetHost (optional)
 #   origName  scope: rsync,tar      suppliedBy: targetHost (optional)
@@ -20,8 +21,8 @@
 #
 # - additional options unused by the backupGT.server
 #   path      scope: rsync,tar      suppliedBy: targetHost (required)
-#   rootVol   scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
-#   tmpVol    scope: zfs.rsync      suppliedBy: targetHost (required)
+#   rootDS    scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
+#   tmpDS     scope: zfs.rsync      suppliedBy: targetHost (required)
 #-------------------------------------------------------------------------------
 
 
@@ -36,14 +37,14 @@ cat <<-EOF
 EOF
 
 #--- root -----
-cat  > `dirname $0`/root.procs <<__EOF__
+cat > ${0%/*}/root.procs <<__EOF__
     module_rsync_init() {
         crontab -l -u root > /root/crontab.save
     }
 __EOF__
 
 #--- homeBackupGT -----
-cat  > `dirname $0`/homeBackupGT.procs <<__EOF__
+cat > ${0%/*}/homeBackupGT.procs <<__EOF__
     module_rsync_init() {
         crontab -l -u backupGT > /home/backupGT/crontab.save 
     }
@@ -51,46 +52,47 @@ __EOF__
 
 
 ############################################################################
-# zfs volumes (will use snapshot send/receive technique)
+# zfs dataset (will use snapshot send/receive technique)
 ############################################################################
-zfsRootVol=backupGT
-zfsTmpVol=$zfsRootVol/$REL_TMP_VOL
+zfsRootDS=backupGT
+zfsTmpDS=$TMP_DS
 
-zfsVols=`zfs list -H -r -o name $zfsRootVol | sed '1d' | grep -v "^$zfsTmpVol"`	
+zfsDatasets=`zfs list -H -r -o name $zfsRootDS | sed '1d' | grep -v "^$zfsTmpDS"`	
 
-echo "$zfsVols" | while read volName; do
-    relVolName=` echo $volName    | sed "s:^$zfsRootVol/::"`
-    relVolFixed=`echo $relVolName | tr '/' '+'`
+echo "$zfsDatasets" | while read dsName; do
+    relDS=`     echo $dsName | sed "s:^$zfsRootDS/::"`
+    relDsFixed=`echo $relDS  | tr '/' '+'`
     
-    printf "%s\t" $relVolFixed
+    printf "%s\t" $relDsFixed
     printf " %s"     "method=zfs"
     printf " %s"     "auto=true"
-    printf " %s"     "rootVol=$zfsRootVol"
-    printf " %s"     "relVol=$relVolName"
-    printf " %s"     "tmpVol=$zfsTmpVol"
+    printf " %s"     "rootDS=$zfsRootDS"
+    printf " %s"     "relDS=$relDS"
+    printf " %s"     "tmpDS=$zfsTmpDS"
     printf "\n"
 done
 
 
 ############################################################################
 # foreign module backups
-#   only provide those which are not already listed as a zfs volume
+#   only provide those which are not already listed as a zfs dataset
 ############################################################################
 rootDir=/backupGT
 
-zfsPaths=`zfs list -H -r -o mountpoint $zfsRootVol`	
+zfsPaths=`zfs list -H -r -o mountpoint $zfsRootDS`	
 
 find $rootDir -maxdepth 3 -name current -exec readlink -f {} \; | sed "s:^$rootDir/::" \
 | while read path; do
-    origHost=`echo $path | cut -d '/' -f 1`
-    origMod=` echo $path | cut -d '/' -f 2`
-    origName=`echo $path | cut -d '/' -f 3`
+
+    origHost=`echo $path | sed 's:\([^/]*\)/\([^/]*\)/\([^/]*\):\1:'`    # cut -d '/' -f 1
+    origMod=` echo $path | sed 's:\([^/]*\)/\([^/]*\)/\([^/]*\):\2:'`    # cut -d '/' -f 2
+    origName=`echo $path | sed 's:\([^/]*\)/\([^/]*\)/\([^/]*\):\3:'`    # cut -d '/' -f 3
 
     if echo "$zfsPaths" | grep -q "$rootDir/$origHost"; then
-        continue     # this host is already listed as a zfs volume
+        continue     # this host is already listed as a zfs dataset
     fi
     if echo "$zfsPaths" | grep -q "$rootDir/$origHost/$origMod"; then
-        continue     # this module is already listed as a zfs volume
+        continue     # this module is already listed as a zfs dataset
     fi
 
    printf "%s\t" "$origHost+$origMod"

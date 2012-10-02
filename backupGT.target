@@ -1,9 +1,10 @@
-
+#! /bin/sh
 
 ###############################################################
 # script for remote backup of local modules/shares
 ###############################################################
-. $0.conf
+. ${0%/*}/target.conf
+
 KEY="$1"   # a key may have been optionally specified
 
 DATE_CMD="date -u +%Y.%m.%d-%H%Mz"
@@ -11,7 +12,7 @@ TIMESTAMP="date -u +%Y.%m.%d-%H%M%Sz"
 ELAPSED_CMD="date +%s"
 ELAPSED_START=`$ELAPSED_CMD`
 
-LOGFILE="$0.log"
+LOGFILE="${0%/*}/target.log"
 
 RSYNC_CONF=/tmp/backupGT_rsyncd_`$DATE_CMD`
 RSYNC_CMD="rsync --server --daemon --config=$RSYNC_CONF ."
@@ -28,11 +29,24 @@ RSYNC_CMD="rsync --server --daemon --config=$RSYNC_CONF ."
 #-------------
 parseAssignment() {
     local var=$1
-    awk '{ print $0 }' RS=' ' | grep "${var}=" | awk '{ print substr($0, index($0, "=")+1) }'
+
+    #awk method (not always available in restricted environments)
+    #awk '{ print $0 }' RS=' ' | grep "${var}=" | awk '{ print substr($0, index($0, "=")+1) }'
+
+    #sed method
+    sed "s/^.*${var}=\([^[:space:]]*\).*/\1/"
 }
 
 lop5offEnd () {
-    echo $* | cut -d ' ' -f -$(( $# - 5 ))
+    #bash/cut method (both bash and cut may not be available in all environments)
+    #echo $* | cut -d ' ' -f -$(( $# - 5 ))
+
+    #sh/sed method
+    list="$*"
+    for i in 1 2 3 4 5; do
+        list=`echo $list | sed 's/[^[:space:]]*$//'`
+    done
+    echo $list
 }
 
 logHeader () {
@@ -96,7 +110,8 @@ createRsyncd () {
         echo "timeout = 600"
         echo "filter = dir-merge /$FILTER_FILE"
         echo ""
-    } | tee $RSYNC_CONF  >> $LOGFILE
+    } > $RSYNC_CONF
+    cat $RSYNC_CONF >>$LOGFILE
 }
 
 
@@ -141,55 +156,55 @@ module_zfs_fini() {
 module_zfs_process() {
     module_zfs_init
 
-    local rootVol=`        echo "$REQUEST_PARMS" | parseAssignment rootVol`
-    local relVol=`         echo "$REQUEST_PARMS" | parseAssignment relVol`
-    local tmpVol=`         echo "$REQUEST_PARMS" | parseAssignment tmpVol`
+    local rootDS=`         echo "$REQUEST_PARMS" | parseAssignment rootDS`
+    local relDS=`          echo "$REQUEST_PARMS" | parseAssignment relDS`
+    local tmpDS=`          echo "$REQUEST_PARMS" | parseAssignment tmpDS`
     local lastSnapLabel=`  echo "$REQUEST_PARMS" | parseAssignment lastSnap`
     local rc=0
-    local volume="$rootVol/$relVol"
+    local dataset="$rootDS/$relDS"
 
-    echo "`$TIMESTAMP`: root volume      = $rootVol"   >> $LOGFILE
-    echo "`$TIMESTAMP`: requested volume = $relVol"     >> $LOGFILE
+    echo "`$TIMESTAMP`: root dataset      = $rootDS"    >> $LOGFILE
+    echo "`$TIMESTAMP`: requested dataset = $relDS"     >> $LOGFILE
 
-    if [ -z "`zfs list -H -o name $volume`" ]; then
-        echo "`$TIMESTAMP`: requested volume $relVol does not exist"  >> $LOGFILE
+    if [ -z "`zfs list -H -o name $dataset`" ]; then
+        echo "`$TIMESTAMP`: requested dataset $relDS does not exist"  >> $LOGFILE
         rc=1
 
     else
         echo "`$TIMESTAMP`:    from snapshot = $lastSnapLabel"  >> $LOGFILE
         local newSnap=`$DATE_CMD`
 
-        echo "`$TIMESTAMP`: generating snapshot $volume@$newSnap"  >> $LOGFILE
-        zfs snapshot "$volume@$newSnap"
+        echo "`$TIMESTAMP`: generating snapshot $dataset@$newSnap"  >> $LOGFILE
+        zfs snapshot "$dataset@$newSnap"
 
         if [ -z "$lastSnapLabel" ]; then
             echo "`$TIMESTAMP`: export is FULL                      "  >> $LOGFILE
             case $REQUEST_METHOD in
                 zfs)
                     echo "`$TIMESTAMP`: streaming export to remote end "  >> $LOGFILE
-                    zfs send -D  "$volume@$newSnap"
+                    zfs send -D  "$dataset@$newSnap"
                     ;;
                 zfs.rsync)
-                    checkModTmp $tmpVol
+                    checkModTmp $tmpDS
                     echo "`$TIMESTAMP`: writing export to $MOD_TMP_DIR/$REQUEST_MODULE.snapExport.gz "  >> $LOGFILE
-                    zfs send -D  "$volume@$newSnap" | gzip -9 > $MOD_TMP_DIR/$REQUEST_MODULE.snapExport.gz
+                    zfs send -D  "$dataset@$newSnap" | gzip -9 > $MOD_TMP_DIR/$REQUEST_MODULE.snapExport.gz
                     module_rsync_process 
         #todo       rm -f $MOD_TMP_DIR/$REQUEST_MODULE.snapExport.gz
                     ;;
             esac
             rc=$?
 
-        elif zfs list -H -o name -t snapshot -d 1 -s name "$volume" | grep -q "@${lastSnapLabel}$"; then
+        elif zfs list -H -o name -t snapshot -d 1 -s name "$dataset" | grep -q "@${lastSnapLabel}$"; then
             echo "`$TIMESTAMP`: export is INCREMENTAL               "  >> $LOGFILE
             case $REQUEST_METHOD in
                 zfs)
                     echo "`$TIMESTAMP`: streaming export to remote end "  >> $LOGFILE
-                    zfs send -D -I "$volume@$lastSnapLabel" "$volume@$newSnap"
+                    zfs send -D -I "$dataset@$lastSnapLabel" "$dataset@$newSnap"
                     ;;
                 zfs.rsync)
-                    checkModTmp $tmpVol
+                    checkModTmp $tmpDS
                     echo "`$TIMESTAMP`: writing export to $MOD_TMP_DIR/$REQUEST_MODULE.snapExport.gz "  >> $LOGFILE
-                    zfs send -D -I "$volume@$lastSnapLabel" "$volume@$newSnap" | gzip -9 > $MOD_TMP_DIR/$REQUEST_MODULE.snapExport.gz
+                    zfs send -D -I "$dataset@$lastSnapLabel" "$dataset@$newSnap" | gzip -9 > $MOD_TMP_DIR/$REQUEST_MODULE.snapExport.gz
                     module_rsync_process
          #todo      rm -f $MOD_TMP_DIR/$REQUEST_MODULE.snapExport.gz
                     ;;
@@ -207,12 +222,12 @@ module_zfs_process() {
 
 
 checkModTmp () {
-    local tmpVol=$1
+    local tmpDS=$1
 
-    if [ -z "`zfs list -H -r -o name $tmpVol 2>/dev/null | grep $tmpVol`" ]; then
-        zfs create -o quota=$TMP_VOL_SIZE $tmpVol
+    if [ -z "`zfs list -H -r -o name $tmpDS 2>/dev/null | grep $tmpDS`" ]; then
+        zfs create -o quota=$TMP_DS_MAX_SIZE $tmpDS
     fi
-    MOD_TMP_DIR="`zfs list -H -o mountpoint $tmpVol`"/$REQUEST_MODULE
+    MOD_TMP_DIR="`zfs list -H -o mountpoint $tmpDS`"/$REQUEST_MODULE
     mkdir -p -m 750 $MOD_TMP_DIR
 }
 
@@ -230,17 +245,17 @@ echo "`$TIMESTAMP`: $0 $*"  >> $LOGFILE
 if [ -n "$SSH_ORIGINAL_COMMAND" ]; then
     MODULE_SPEC="$SSH_ORIGINAL_COMMAND"
 else
-    MODULE_SPEC=`$0.modList | grep "key=$KEY"`
+    MODULE_SPEC=`${0%/*}/target.modList | grep "key=$KEY"`
 fi 
 
-REQUEST_MODULE=`echo "$MODULE_SPEC" | cut -d "	" -f 1`
-REQUEST_PARMS=` echo "$MODULE_SPEC" | cut -d "	" -f 2`
+REQUEST_MODULE=`echo "$MODULE_SPEC" | sed 's/\(.*\)\t\(.*\)/\1/'`   #cut -d "	" -f 1
+REQUEST_PARMS=` echo "$MODULE_SPEC" | sed 's/\(.*\)\t\(.*\)/\2/'`   #cut -d "	" -f 2
 REQUEST_METHOD=`echo "$REQUEST_PARMS" | parseAssignment method`
 logHeader
 
 if [ "$REQUEST_MODULE" =  "_listModules" ]; then
     echo "`$TIMESTAMP`: listing modules"  >> $LOGFILE
-    $0.modList
+    ${0%/*}/target.modList
 else
     if [ -f "`dirname $0`/$REQUEST_MODULE.procs" ]; then
         . "`dirname $0`/$REQUEST_MODULE.procs"
