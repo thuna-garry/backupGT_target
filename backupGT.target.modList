@@ -1,0 +1,105 @@
+#! /bin/sh
+
+############################################################################
+# load global configuration
+############################################################################
+. ${0%.*}.conf
+
+#-------------------------------------------------------------------------------
+# - data lines consist of two fields (moduleName, comment) separated by a tab
+#
+# - each comment may contain the following options
+#   method    scope: all            suppliedBy: targetHost (required)
+#   auto      scope: any            suppliedBy: targetHost (optional)
+#   relVol    scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
+#   origHost  scope: rsync,tar      suppliedBy: targetHost (optional)
+#   origMod   scope: rsync,tar      suppliedBy: targetHost (optional)
+#   origName  scope: rsync,tar      suppliedBy: targetHost (optional)
+#   key       scope: rsync,tar      suppliedBy: targetHost (optional)
+#   lastSnap  scope: zfs,zfs.rsync  suppliedBy: backupServer (required)
+#
+# - additional options unused by the backupGT.server
+#   path      scope: rsync,tar      suppliedBy: targetHost (required)
+#   rootVol   scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
+#   tmpVol    scope: zfs.rsync      suppliedBy: targetHost (required)
+#-------------------------------------------------------------------------------
+
+
+############################################################################
+# local modules
+############################################################################
+cat <<-EOF
+	root		auto=true method=rsync path=/root
+	etc		auto=true method=rsync path=/etc
+	usrLocalEtc	auto=true method=rsync path=/usr/local/etc
+	homeBackupGT	auto=true method=rsync path=/home/backupGT
+EOF
+
+#--- root -----
+cat  > `dirname $0`/root.procs <<__EOF__
+    module_rsync_init() {
+        crontab -l -u root > /root/crontab.save
+    }
+__EOF__
+
+#--- homeBackupGT -----
+cat  > `dirname $0`/homeBackupGT.procs <<__EOF__
+    module_rsync_init() {
+        crontab -l -u backupGT > /home/backupGT/crontab.save 
+    }
+__EOF__
+
+
+############################################################################
+# zfs volumes (will use snapshot send/receive technique)
+############################################################################
+zfsRootVol=backupGT
+zfsTmpVol=$zfsRootVol/$REL_TMP_VOL
+
+zfsVols=`zfs list -H -r -o name $zfsRootVol | sed '1d' | grep -v "^$zfsTmpVol"`	
+
+echo "$zfsVols" | while read volName; do
+    relVolName=` echo $volName    | sed "s:^$zfsRootVol/::"`
+    relVolFixed=`echo $relVolName | tr '/' '+'`
+    
+    printf "%s\t" $relVolFixed
+    printf " %s"     "method=zfs"
+    printf " %s"     "auto=true"
+    printf " %s"     "rootVol=$zfsRootVol"
+    printf " %s"     "relVol=$relVolName"
+    printf " %s"     "tmpVol=$zfsTmpVol"
+    printf "\n"
+done
+
+
+############################################################################
+# foreign module backups
+#   only provide those which are not already listed as a zfs volume
+############################################################################
+rootDir=/backupGT
+
+zfsPaths=`zfs list -H -r -o mountpoint $zfsRootVol`	
+
+find $rootDir -maxdepth 3 -name current -exec readlink -f {} \; | sed "s:^$rootDir/::" \
+| while read path; do
+    origHost=`echo $path | cut -d '/' -f 1`
+    origMod=` echo $path | cut -d '/' -f 2`
+    origName=`echo $path | cut -d '/' -f 3`
+
+    if echo "$zfsPaths" | grep -q "$rootDir/$origHost"; then
+        continue     # this host is already listed as a zfs volume
+    fi
+    if echo "$zfsPaths" | grep -q "$rootDir/$origHost/$origMod"; then
+        continue     # this module is already listed as a zfs volume
+    fi
+
+   printf "%s\t" "$origHost+$origMod"
+   printf " %s"     "method=rsync"
+   printf " %s"     "auto=true"
+   printf " %s"     "path=$rootDir/$path"
+   printf " %s"     "origHost=$origHost"
+   printf " %s"     "origMod=$origMod"
+   printf " %s"     "origName=$origName"
+   printf "\n"
+done
+
