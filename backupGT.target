@@ -257,8 +257,8 @@ if [ "$REQUEST_MODULE" =  "_listModules" ]; then
     echo "`$TIMESTAMP`: listing modules"  >> $LOGFILE
     ${0%/*}/target.modList
 else
-    if [ -f "`dirname $0`/$REQUEST_MODULE.procs" ]; then
-        . "`dirname $0`/$REQUEST_MODULE.procs"
+    if [ -f "${0%/*}/$REQUEST_MODULE.procs" ]; then
+        . "${0%/*}/$REQUEST_MODULE.procs"
     fi
     case $REQUEST_METHOD in
         rsync)          module_rsync_process ;;
