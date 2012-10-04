@@ -248,8 +248,8 @@ else
     MODULE_SPEC=`${0%/*}/target.modList | grep "key=$KEY"`
 fi 
 
-REQUEST_MODULE=`echo "$MODULE_SPEC" | sed 's/\(.*\)\t\(.*\)/\1/'`   #cut -d "	" -f 1
-REQUEST_PARMS=` echo "$MODULE_SPEC" | sed 's/\(.*\)\t\(.*\)/\2/'`   #cut -d "	" -f 2
+REQUEST_MODULE=`echo "$MODULE_SPEC" | sed 's/\(.*\)	\(.*\)/\1/'`   #cut -d "	" -f 1
+REQUEST_PARMS=` echo "$MODULE_SPEC" | sed 's/\(.*\)	\(.*\)/\2/'`   #cut -d "	" -f 2
 REQUEST_METHOD=`echo "$REQUEST_PARMS" | parseAssignment method`
 logHeader
 
