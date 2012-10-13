@@ -31,14 +31,16 @@ parseAssignment() {
     local var=$1
 
     #awk method (not always available in restricted environments)
-    #awk '{ print $0 }' RS=' ' | grep "${var}=" | awk '{ print substr($0, index($0, "=")+1) }'
+    #awk '{ print $0 }' RS=' ' | grep "${var}=" \
+    #    | awk '{ print substr($0, index($0, "=")+1) }'
 
-    #sed method
-    sed "s/^.*${var}=\([^[:space:]]*\).*/\1/"
+    #sed method: first delete any lines not containing $var, then get the value
+    sed -e "/${var}/!d" \
+        -e "s/^.*${var}=\([^[:space:]]*\).*/\1/"
 }
 
 lop5offEnd () {
-    #bash/cut method (both bash and cut may not be available in all environments)
+    #bash/cut method (bash/cut not always available in restricted environments)
     #echo $* | cut -d ' ' -f -$(( $# - 5 ))
 
     #sh/sed method
@@ -50,18 +52,22 @@ lop5offEnd () {
 }
 
 logHeader () {
+    # pass as $* the original command line
     [ "$REQUEST_MODULE" = "_listModules" ] && printf "\n\n"
     echo "===== begin ======================================================="
-    #echo "`$TIMESTAMP`: SSH_ORIGINAL_COMMAND=$SSH_ORIGINAL_COMMAND"
-    echo "`$TIMESTAMP`: module spec = $MODULE_SPEC"
-    echo "`$TIMESTAMP`: request module = $REQUEST_MODULE"
-    echo "`$TIMESTAMP`: request parms  = $REQUEST_PARMS"
-    echo "`$TIMESTAMP`: request method = $REQUEST_METHOD"
+    echo `$TIMESTAMP`: command line = "$@"
+    #echo `$TIMESTAMP`: SSH_ORIGINAL_COMMAND = "$SSH_ORIGINAL_COMMAND"
+    #echo `$TIMESTAMP`: KEY = "$KEY"
+    echo `$TIMESTAMP`: module spec    = "$MODULE_SPEC"
+    echo `$TIMESTAMP`: request module = "$REQUEST_MODULE"
+    echo `$TIMESTAMP`: request parms  = "$REQUEST_PARMS"
+    echo `$TIMESTAMP`: request method = "$REQUEST_METHOD"
 } >> $LOGFILE
 
 logFooter () {
     echo "`$TIMESTAMP`: complete (duration = $ELAPSED_MIN minutes)"
     echo "===== end ========================================================="
+    echo ""
 } >> $LOGFILE
 
 
@@ -240,22 +246,29 @@ checkModTmp () {
 #    but if rsync is being used it will have 5 parameters
 #    '<hostname> rsync --server --daemon .' appended to it
 ###############################################################
-echo "`$TIMESTAMP`: $0 $*"  >> $LOGFILE
 
 if [ -n "$SSH_ORIGINAL_COMMAND" ]; then
     MODULE_SPEC="$SSH_ORIGINAL_COMMAND"
 else
-    MODULE_SPEC=`${0%/*}/target.modList | grep "key=$KEY"`
+    MODULE_SPEC="`${0%/*}/target.modList | grep key=$KEY`"
 fi 
 
+if echo "$MODULE_SPEC" | grep -vq '	' ; then
+    echo "ERROR: protocol violated MODULE_SPEC missing tab delimeter" >> $LOGFILE
+fi
 REQUEST_MODULE=`echo "$MODULE_SPEC" | sed 's/\(.*\)	\(.*\)/\1/'`   #cut -d "	" -f 1
 REQUEST_PARMS=` echo "$MODULE_SPEC" | sed 's/\(.*\)	\(.*\)/\2/'`   #cut -d "	" -f 2
 REQUEST_METHOD=`echo "$REQUEST_PARMS" | parseAssignment method`
-logHeader
+logHeader "$0" "$@"
+
 
 if [ "$REQUEST_MODULE" =  "_listModules" ]; then
     echo "`$TIMESTAMP`: listing modules"  >> $LOGFILE
-    ${0%/*}/target.modList
+    if [ -z  "$REQUEST_PARMS" ]; then
+        ${0%/*}/target.modList
+    else
+        ${0%/*}/target.modList | grep "$REQUEST_PARMS"
+    fi
 else
     if [ -f "${0%/*}/$REQUEST_MODULE.procs" ]; then
         . "${0%/*}/$REQUEST_MODULE.procs"
