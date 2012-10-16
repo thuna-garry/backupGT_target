@@ -261,13 +261,12 @@ REQUEST_PARMS=` echo "$MODULE_SPEC" | sed 's/\(.*\)	\(.*\)/\2/'`   #cut -d "	" -
 REQUEST_METHOD=`echo "$REQUEST_PARMS" | parseAssignment method`
 logHeader "$0" "$@"
 
-
 if [ "$REQUEST_MODULE" =  "_listModules" ]; then
     echo "`$TIMESTAMP`: listing modules"  >> $LOGFILE
     if [ -z  "$REQUEST_PARMS" ]; then
         ${0%/*}/target.modList
     else
-        ${0%/*}/target.modList | grep "$REQUEST_PARMS"
+        ${0%/*}/target.modList | grep "^$REQUEST_PARMS"
     fi
 else
     if [ -f "${0%/*}/$REQUEST_MODULE.procs" ]; then
