@@ -36,15 +36,15 @@ cat <<-EOF
 	homeBackupGT	auto=true method=rsync path=/home/backupGT
 EOF
 
-#--- root -----
-cat > ${0%/*}/root.procs <<__EOF__
+
+cat > ${0%/*}/root.procs <<"__EOF__"
     module_rsync_init() {
         crontab -l -u root > /root/crontab.save
     }
 __EOF__
 
-#--- homeBackupGT -----
-cat > ${0%/*}/homeBackupGT.procs <<__EOF__
+
+cat > ${0%/*}/homeBackupGT.procs <<"__EOF__"
     module_rsync_init() {
         crontab -l -u backupGT > /home/backupGT/crontab.save 
     }
