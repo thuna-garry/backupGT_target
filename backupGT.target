@@ -22,21 +22,24 @@ RSYNC_CMD="rsync --server --daemon --config=$RSYNC_CONF ."
 # utilities
 ###############################################################
 
-#-------------
-# find a variable assignment in a string and return the value assigned
-# to the specified variable assuming an input string of the form
-#     var_1=val_1  var_2=val_2 ...
-#-------------
 parseAssignment() {
-    local var=$1
+    #-------------
+    # find a variable assignment in a string and return the value assigned
+    # to the specified variable assuming an input string of the form
+    #     var_1=val_1  var_2=val_2 ...
+    # each var=val is separated from others by [:blank:]space
+    # if a value needs to have embedded whitespace then the whitespace can
+    #     be encoded with an ascii US (unit separator \037 \x1F), which will
+    #     be decoded with a space before the value is returned
+    #-------------
+    local var="$1"
 
-    #awk method (not always available in restricted environments)
-    #awk '{ print $0 }' RS=' ' | grep "${var}=" \
-    #    | awk '{ print substr($0, index($0, "=")+1) }'
-
-    #sed method: first delete any lines not containing $var, then get the value
-    sed -e "/${var}/!d" \
-        -e "s/^.*${var}=\([^[:space:]]*\).*/\1/"
+    #sed method: first delete any lines not containing $var
+    #            then get the value
+    #            then convert any \037 chars to spaces
+    sed -e "/${var}=/!d"                          \
+        -e "s/^.*${var}=\([^[:blank:]]*\).*/\1/"  \
+        -e "`printf 's/\037/ /g'`"
 }
 
 lop5offEnd () {
@@ -249,8 +252,12 @@ checkModTmp () {
 
 if [ -n "$SSH_ORIGINAL_COMMAND" ]; then
     MODULE_SPEC="$SSH_ORIGINAL_COMMAND"
-else
+elif [ -n "$key" ]; then
+    # restricted environment but caller supplied key so get the spec by running target.modlist
     MODULE_SPEC="`${0%/*}/target.modList | grep key=$KEY`"
+else
+    # restricted environment but caller supplied no key so assume caller wants _listModules
+    MODULE_SPEC=`printf '%s\t%s' "_listModules" ""`
 fi 
 
 if echo "$MODULE_SPEC" | grep -vq '	' ; then
@@ -258,15 +265,17 @@ if echo "$MODULE_SPEC" | grep -vq '	' ; then
 fi
 REQUEST_MODULE=`echo "$MODULE_SPEC" | sed 's/\(.*\)	\(.*\)/\1/'`   #cut -d "	" -f 1
 REQUEST_PARMS=` echo "$MODULE_SPEC" | sed 's/\(.*\)	\(.*\)/\2/'`   #cut -d "	" -f 2
-REQUEST_METHOD=`echo "$REQUEST_PARMS" | parseAssignment method`
+REQUEST_METHOD=`echo x"$REQUEST_PARMS" | parseAssignment method`
 logHeader "$0" "$@"
+
 
 if [ "$REQUEST_MODULE" =  "_listModules" ]; then
     echo "`$TIMESTAMP`: listing modules"  >> $LOGFILE
     if [ -z  "$REQUEST_PARMS" ]; then
         ${0%/*}/target.modList
     else
-        ${0%/*}/target.modList | grep "^$REQUEST_PARMS"
+        modName=`echo "$REQUEST_PARMS" | parseAssignment modName`
+        ${0%/*}/target.modList | grep "^$modName"
     fi
 else
     if [ -f "${0%/*}/$REQUEST_MODULE.procs" ]; then
