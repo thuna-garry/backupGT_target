@@ -1,3 +1,4 @@
 *.log
-*.procs
+procs.*
 target.modList
+target.conf

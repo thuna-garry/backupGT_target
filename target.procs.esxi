@@ -1,0 +1,72 @@
+VM_TIMESTAMP=`$DATE_CMD`
+
+############################################################################
+# procs for esxi vm guests
+############################################################################
+vm_snapshot_create () {
+    local vmName="$1"
+    local vmId=`vm_getVmId "$vmName"`
+    local vmSnapName="backupGT_$VM_TIMESTAMP"
+    local vmSnapLabel="backupGT (vmId=$vmId, vmName=$vmName)"
+
+    echo "vmName = $vmName"
+    echo "vmId   = $vmId"
+    echo "vmSnapName = $vmSnapName"
+    echo "vmSnapLabel = $vmSnapLabel"
+
+    # create the snapshot
+    local snapMem=0
+    local quieseDisk=1
+    vim-cmd vmsvc/snapshot.create $vmId "$vmSnapName" "$vmSnapLabel" $snapMem $quieseDisk
+
+    # wait for creation to finish
+    local iterations=$(( SNAP_WAIT * 12 ))
+    local failure=1
+    while `echo -n`; do
+        local snapLevel=`vm_getSnapLevel "$vmId" "$vmSnapName"`
+        if [ $snapLevel -ge 0 ]; then
+            vmSnapLevel=$(( (dashes / 2) -1 ))
+            failure=0
+            break;
+        fi
+        [ $iterations -eq 0 ] && break
+        sleep 5
+        iterations=$(( iterations - 1 ))
+    done
+    return $failure
+} >> $LOG_PATH 2>&1
+
+
+vm_snapshot_remove () {
+    local vmName="$1"
+    local vmId=`vm_getVmId "$vmName"`
+    local vmSnapName="backupGT_$VM_TIMESTAMP"
+    
+    # remove the snapshot
+    local snapLevel=`vm_getSnapLevel "$vmId" "vmSnapName"`
+    local removeChildren=0
+    local snapshotIndex=0
+    vim-cmd vmsvc/snapshot.remove $vmId $removeChildren $vmSnapLevel $snapshotIndex
+} >> $LOG_PATH 2>&1
+
+
+vm_getVmId () {
+    local vmName="$1"
+    vim-cmd vmsvc/getallvms | grep "^[^ ]* *${vmName} *\[" | awk '{print $1}'
+}
+
+
+vm_getSnapLevel () {
+    local vmId="$1"
+    local vmSnapName="$2"
+    local dashes=` vim-cmd vmsvc/snapshot.get $vmId \
+                 | grep "$vmSnapName"               \
+                 | sed 's/[^-].*$//'                \
+                 | wc -L                            `
+    if [ $dashes -gt 0 ]; then
+        echo $(( (dashes / 2) -1 ))
+    else
+        echo "-1"   # failure snapshot not found
+    fi
+}
+
