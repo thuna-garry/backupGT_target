@@ -42,7 +42,7 @@ fi
 #----
 # bsd
 #----
-if [ "$SYSTEM_TYPE" == "linux" ]; then
+if [ "$SYSTEM_TYPE" == "bsd" ]; then
    RSYNC_CMD="rsync"
    TAR_CMD="tar cvf -"
 fi
