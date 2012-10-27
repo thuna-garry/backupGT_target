@@ -11,10 +11,10 @@
 #----
 SYSTEM_TYPE=linux
 
-MOD_LIST_PATH=/tmp/backupGT_modList          # where the module list should be written
-TAR_INC_PATH_PREFIX=/tmp/backupGT_tarInc     # where tar include files should be written
-RSYNC_CONF_PATH_PREFIX=/tmp/backupGT_rsyncd  # where the rsync.conf should be written
-LOG_PATH="/tmp/backupGT.log"
+MOD_LIST_PATH="         /tmp/backupGT.modList"  # where the module list should be written
+TAR_INC_PATH_PREFIX="   /tmp/backupGT.tarInc"   # where tar include files should be written
+RSYNC_CONF_PATH_PREFIX="/tmp/backupGT.rsyncd"   # where the rsync.conf should be written
+LOG_PATH="              /tmp/backupGT.log"
 
 FILTER_FILE=".backupGT-filter"               # file name for diretory based rsync filters
 
