@@ -34,7 +34,7 @@ ELAPSED_CMD="date +%s"
 #----
 # linux
 #----
-if [ "$SYSTEM_TYPE" == "linux" ]; then
+if [ "$SYSTEM_TYPE" = "linux" ]; then
    RSYNC_CMD="rsync"
    TAR_CMD="tar cvf -"
 fi
@@ -42,7 +42,7 @@ fi
 #----
 # bsd
 #----
-if [ "$SYSTEM_TYPE" == "bsd" ]; then
+if [ "$SYSTEM_TYPE" = "bsd" ]; then
    RSYNC_CMD="rsync"
    TAR_CMD="tar cvf -"
 fi
@@ -50,7 +50,7 @@ fi
 #----
 # esxi
 #----
-if [ "$SYSTEM_TYPE" == "esxi" ]; then
+if [ "$SYSTEM_TYPE" = "esxi" ]; then
    RSYNC_CMD="/opt/rsync/rsync"
    TAR_CMD="tar cvf -"
    SNAP_WAIT=5  #minuts to wait for snapshot creation
@@ -60,7 +60,7 @@ fi
 #----
 # windows
 #----
-if [ "$SYSTEM_TYPE" == "windows" ]; then
+if [ "$SYSTEM_TYPE" = "windows" ]; then
    RSYNC_CMD="rsync"
    TAR_CMD="tar cvf -"
 fi

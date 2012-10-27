@@ -288,7 +288,7 @@ else
 fi
 
 if echo "$MODULE_SPEC" | grep -vq '	' ; then
-echo ">>>>>>> mod " "$MODULE_SPEC" | sed 's/	/XXX/g' >> /tmp/garry
+    echo "ERROR: protocol violated MODULE_SPEC missing tab delimeter" >> $LOG_PATH
 fi
 
 REQUEST_MODULE=`echo "$MODULE_SPEC" | sed 's/\(.*\)	\(.*\)/\1/'`   #cut -d "	" -f 1
