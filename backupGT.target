@@ -67,6 +67,7 @@ logFooter () {
 } >> $LOG_PATH
 
 
+
 ######################################################################
 # rsync processing routines
 ######################################################################
@@ -280,8 +281,10 @@ zfsCheckModTmp () {
 if [ -n "$SSH_ORIGINAL_COMMAND" ]; then
     MODULE_SPEC="$SSH_ORIGINAL_COMMAND"
 elif [ -n "$KEY" ]; then
-    # restricted environment but caller supplied key so get the spec by running target.modlist
-    MODULE_SPEC="`${0%/*}/target.modList | grep -e key=$KEY`"
+    # restricted environment but caller supplied key so run target.modlist
+    #   and searching for the line with the specified key
+    # append a space to each key so that key=1 doesn't match key=11, key=123, etc
+    MODULE_SPEC="`${0%/*}/target.modList | sed 's/\(key=[0-9]*\)/\1 /' | grep 'key='$KEY' '`"
 else
     # restricted environment but caller supplied no key so assume caller wants _listModules
     MODULE_SPEC=`printf '%s\t%s' "_listModules" ""`

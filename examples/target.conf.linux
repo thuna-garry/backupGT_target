@@ -9,7 +9,7 @@
 # The type of server that we are running on
 # should be one of 'bsd', 'linux', 'esxi', 'windows'
 #----
-SYSTEM_TYPE=bsd
+SYSTEM_TYPE=linux
 
 MOD_LIST_PATH=/tmp/backupGT_modList          # where the module list should be written
 TAR_INC_PATH_PREFIX=/tmp/backupGT_tarInc     # where tar include files should be written
