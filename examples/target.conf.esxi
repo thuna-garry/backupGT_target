@@ -18,8 +18,10 @@ LOG_PATH="              /vmfs/volumes/datastoreLocal/_tmp/backupGT.log"
 
 FILTER_FILE=".backupGT-filter"               # file name for diretory based rsync filters
 
-TMP_DS=backupGT/_tmp                         # dataset name for temp storage (bsd with zfs only)
-TMP_DS_MAX_SIZE=2000G                        # maximue size for temp dataset (bsd with zfs only)
+ZFS_ROOT_DS=data/backupGT   # dataset name under which all backups are stored
+ZFS_ROOT_DIR=/data/backupGT # root dir under which all backups are stored
+ZFS_TMP_DS=data/_tmp        # dataset name for temp storage (system with zfs only)
+ZFS_TMP_DS_MAX_SIZE=2000G   # maximue size for temp dataset (system with zfs only)
 
 
 ############################################################################

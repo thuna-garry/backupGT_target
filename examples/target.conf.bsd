@@ -9,7 +9,7 @@
 # The type of server that we are running on
 # should be one of 'bsd', 'linux', 'esxi', 'windows'
 #----
-SYSTEM_TYPE=linux
+SYSTEM_TYPE=bsd
 
 MOD_LIST_PATH="         /tmp/backupGT.modList"  # where the module list should be written
 TAR_INC_PATH_PREFIX="   /tmp/backupGT.tarInc"   # where tar include files should be written
@@ -72,5 +72,4 @@ fi
 # include system specific routines
 #----
 . ${0%/*}/target.procs.${SYSTEM_TYPE}
-
 
