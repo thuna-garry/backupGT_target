@@ -1,0 +1,42 @@
+#! /bin/sh 
+
+###############################################################
+# script to create a list of modules to be backed up
+###############################################################
+. ${0%/*}/target.conf
+
+#-------------------------------------------------------------------------------
+# - data lines consist of two fields (moduleName, comment) separated by a tab
+#
+# - each comment may contain the following options
+#   method    scope: all            suppliedBy: targetHost (required)
+#   auto      scope: any            suppliedBy: targetHost (optional)
+#   relDS     scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
+#   origHost  scope: rsync,tar      suppliedBy: targetHost (optional)
+#   origMod   scope: rsync,tar      suppliedBy: targetHost (optional)
+#   origName  scope: rsync,tar      suppliedBy: targetHost (optional)
+#   key       scope: rsync,tar      suppliedBy: targetHost (optional)
+#   lastSnap  scope: zfs,zfs.rsync  suppliedBy: backupServer (required)
+#
+# - additional options unused by the backupGT.server
+#   path      scope: rsync,tar      suppliedBy: targetHost (required)
+#   rootDS    scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
+#   tmpDS     scope: zfs.rsync      suppliedBy: targetHost (required)
+#-------------------------------------------------------------------------------
+
+
+############################################################################
+# local modules
+############################################################################
+cat <<-EOF
+	cDrive		auto=true method=rsync path=/cygdrive/c
+EOF
+
+
+#cat > ${0%/*}/procs.root <<"__EOF__"
+#    module_rsync_init() {
+#        crontab -l -u root > /root/crontab.save 2>/dev/null
+#        return 0
+#    }
+#__EOF__
+
