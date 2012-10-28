@@ -22,10 +22,8 @@ vm_snapshot_create () {
     # wait for creation to finish
     local iterations=$(( SNAP_WAIT * 12 ))
     local failure=1
-    while `echo -n`; do
-        local snapLevel=`vm_getSnapLevel "$vmId" "$vmSnapName"`
-        if [ $snapLevel -ge 0 ]; then
-            vmSnapLevel=$(( (dashes / 2) -1 ))
+    while echo "    waiting for snapshot to complete ..."; do
+        if [ `vm_getSnapLevel "$vmId" "$vmSnapName"` -ge 0 ]; then
             failure=0
             break;
         fi
@@ -33,6 +31,7 @@ vm_snapshot_create () {
         sleep 5
         iterations=$(( iterations - 1 ))
     done
+    echo "    waiting completed in $(( (SNAP_WAIT * 12 - iterations) * 5 )) seconds"
     return $failure
 } >> $LOG_PATH 2>&1
 
@@ -42,11 +41,19 @@ vm_snapshot_remove () {
     local vmId=`vm_getVmId "$vmName"`
     local vmSnapName="backupGT_$VM_TIMESTAMP"
     
-    # remove the snapshot
-    local snapLevel=`vm_getSnapLevel "$vmId" "vmSnapName"`
+    # set the remove parameters
     local removeChildren=0
+    local snapLevel=`vm_getSnapLevel "$vmId" "$vmSnapName"`
     local snapshotIndex=0
-    vim-cmd vmsvc/snapshot.remove $vmId $removeChildren $vmSnapLevel $snapshotIndex
+    
+    # provide feedback
+    echo "Removing snapshot: $vmSnapName"
+    echo "             vmId: $vmId"
+    echo "       snap level: $snapLevel"
+    echo "  removal command: vim-cmd vmsvc/snapshot.remove $vmId $removeChildren $snapLevel $snapshotIndex"
+    
+    # do the removal
+    vim-cmd vmsvc/snapshot.remove $vmId $removeChildren $snapLevel $snapshotIndex
 } >> $LOG_PATH 2>&1
 
 
