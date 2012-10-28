@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/sh 
 
 ###############################################################
 # script for remote backup of local modules/shares
@@ -59,6 +59,7 @@ logHeader () {
     echo `$DATE_CMD`: request parms  = "$REQUEST_PARMS"
     echo `$DATE_CMD`: request method = "$REQUEST_METHOD"
 } >> $LOG_PATH
+
 
 logFooter () {
     echo "`$DATE_CMD`: complete (duration = $ELAPSED_MIN minutes)"
