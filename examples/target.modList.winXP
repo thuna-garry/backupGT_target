@@ -33,7 +33,7 @@ cat <<-EOF
 EOF
 
 
-#cat > ${0%/*}/procs.root <<"__EOF__"
+#cat > ${PROC_PATH_PREFIX}.root <<"__EOF__"
 #    module_rsync_init() {
 #        crontab -l -u root > /root/crontab.save 2>/dev/null
 #        return 0

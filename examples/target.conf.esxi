@@ -12,8 +12,9 @@
 SYSTEM_TYPE=esxi
 
          MOD_LIST_PATH="/vmfs/volumes/datastoreLocal/_tmp/backupGT.modList" # loc for module list
-   TAR_INC_PATH_PREFIX="/vmfs/volumes/datastoreLocal/_tmp/backupGT.tarInc"  # loc for where tar include files should be written
-RSYNC_CONF_PATH_PREFIX="/vmfs/volumes/datastoreLocal/_tmp/backupGT.rsyncd"  # loc for rsync.conf
+      PROC_PATH_PREFIX="/vmfs/volumes/datastoreLocal/_tmp/proc"             # loc for module specific procs
+   TAR_INC_PATH_PREFIX="/vmfs/volumes/datastoreLocal/_tmp/backupGT.tarInc"  # loc for tar include files
+RSYNC_CONF_PATH_PREFIX="/vmfs/volumes/datastoreLocal/_tmp/backupGT.rsyncd"  # loc for rsyncd conf files
               LOG_PATH="/vmfs/volumes/datastoreLocal/_tmp/backupGT.log"
 
 RSYNC_FILTER_FILE=".backupGT-filter"         # file name for diretory based rsync filters

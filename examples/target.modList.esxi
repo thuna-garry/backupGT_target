@@ -63,7 +63,6 @@ localModules () {
 	opt		auto=true method=rsync path=/opt key=$((++kc))
 	dotSsh		auto=true method=rsync path=/.ssh key=$((++kc))
 	disks		auto=true method=rsync path=/vmfs/volumes/datastoreLocal/_disks key=$((++kc))
-	templates	auto=true method=rsync path=/vmfs/volumes/datastoreLocal/_templates key=$((++kc))
 	__EOF__
 }
 
@@ -144,7 +143,7 @@ vmGuests () {
 
 writeVmProcs () {
     modName=$1
-    cat > ${0%/*}/procs.$modName <<"__EOF__"
+    cat > ${PROC_PATH_PREFIX}.${modName} <<"__EOF__"
     
     module_rsync_init() {
         local requestModule="$1"

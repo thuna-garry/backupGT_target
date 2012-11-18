@@ -36,7 +36,7 @@
 #EOF
 
 
-#cat > ${0%/*}/root.procs <<"__EOF__"
+#cat > ${PROC_PATH_PREFIX}.root <<"__EOF__"
 #    module_rsync_init() {
 #        crontab -l -u root > /root/crontab.save 2>/dev/null
 #        return 0
@@ -44,7 +44,7 @@
 #__EOF__
 
 
-#cat > ${0%/*}/homeBackupGT.procs <<"__EOF__"
+#cat > ${PROC_PATH_PREFIX}.homeBackupGT <<"__EOF__"
 #    module_rsync_init() {
 #        crontab -l -u backupGT > /home/backupGT/crontab.save 2>/dev/null
 #        return 0

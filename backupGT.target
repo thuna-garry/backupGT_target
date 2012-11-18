@@ -308,8 +308,8 @@ if [ "$REQUEST_MODULE" =  "_listModules" ]; then
         ${0%/*}/target.modList | grep "^$modName"
     fi
 else
-    if [ -f "${0%/*}/procs.${REQUEST_MODULE}" ]; then
-        . "${0%/*}/procs.${REQUEST_MODULE}"
+    if [ -f "${PROC_PATH_PREFIX}.${REQUEST_MODULE}" ]; then
+        . "${PROC_PATH_PREFIX}.${REQUEST_MODULE}"
     fi
     case $REQUEST_METHOD in
         rsync)          module_rsync_process ;;
