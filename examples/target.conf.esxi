@@ -7,21 +7,19 @@
 
 #----
 # The type of server that we are running on
-# should be one of 'bsd', 'linux', 'esxi', 'windows'
+# should be one of 'bsd', 'linux', 'esxi'
 #----
 SYSTEM_TYPE=esxi
 
-         MOD_LIST_PATH="/vmfs/volumes/datastoreLocal/_tmp/backupGT.modList" # loc for module list
-   TAR_INC_PATH_PREFIX="/vmfs/volumes/datastoreLocal/_tmp/backupGT.tarInc"  # loc for where tar include files should be written
-RSYNC_CONF_PATH_PREFIX="/vmfs/volumes/datastoreLocal/_tmp/backupGT.rsyncd"  # loc for rsync.conf
-              LOG_PATH="/vmfs/volumes/datastoreLocal/_tmp/backupGT.log"
+MOD_LIST_PATH=/vmfs/volumes/datastoreLocal/_tmp/backupGT_modList          # where the module list should be written
+TAR_INC_PATH_PREFIX=/vmfs/volumes/datastoreLocal/_tmp/backupGT_tarInc     # where tar include files should be written
+RSYNC_CONF_PATH_PREFIX=/vmfs/volumes/datastoreLocal/_tmp/backupGT_rsyncd  # where the rsync.conf should be written
+LOG_PATH="/vmfs/volumes/datastoreLocal/_tmp/backupGT.log"
 
-FILTER_FILE=".backupGT-filter"               # file name for diretory based rsync filters
+RSYNC_FILTER_FILE=".backupGT-filter"         # file name for diretory based rsync filters
 
-ZFS_ROOT_DS=data/backupGT   # dataset name under which all backups are stored
-ZFS_ROOT_DIR=/data/backupGT # root dir under which all backups are stored
-ZFS_TMP_DS=data/_tmp        # dataset name for temp storage (system with zfs only)
-ZFS_TMP_DS_MAX_SIZE=2000G   # maximue size for temp dataset (system with zfs only)
+TMP_DS=backupGT/_tmp                         # dataset name for temp storage (bsd with zfs only)
+TMP_DS_MAX_SIZE=2000G                        # maximue size for temp dataset (bsd with zfs only)
 
 
 ############################################################################
@@ -36,7 +34,7 @@ ELAPSED_CMD="date +%s"
 #----
 # linux
 #----
-if [ "$SYSTEM_TYPE" = "linux" ]; then
+if [ "$SYSTEM_TYPE" == "linux" ]; then
    RSYNC_CMD="rsync"
    TAR_CMD="tar cvf -"
 fi
@@ -44,7 +42,7 @@ fi
 #----
 # bsd
 #----
-if [ "$SYSTEM_TYPE" = "bsd" ]; then
+if [ "$SYSTEM_TYPE" == "linux" ]; then
    RSYNC_CMD="rsync"
    TAR_CMD="tar cvf -"
 fi
@@ -52,7 +50,7 @@ fi
 #----
 # esxi
 #----
-if [ "$SYSTEM_TYPE" = "esxi" ]; then
+if [ "$SYSTEM_TYPE" == "esxi" ]; then
    RSYNC_CMD="/opt/rsync/rsync"
    TAR_CMD="tar cvf -"
    SNAP_WAIT=5  #minuts to wait for snapshot creation
@@ -62,7 +60,7 @@ fi
 #----
 # windows
 #----
-if [ "$SYSTEM_TYPE" = "windows" ]; then
+if [ "$SYSTEM_TYPE" == "windows" ]; then
    RSYNC_CMD="rsync"
    TAR_CMD="tar cvf -"
 fi

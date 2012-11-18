@@ -63,7 +63,6 @@ localModules () {
 	opt		auto=true method=rsync path=/opt key=$((++kc))
 	dotSsh		auto=true method=rsync path=/.ssh key=$((++kc))
 	disks		auto=true method=rsync path=/vmfs/volumes/datastoreLocal/_disks key=$((++kc))
-	templates	auto=true method=rsync path=/vmfs/volumes/datastoreLocal/_templates key=$((++kc))
 	__EOF__
 }
 
@@ -87,30 +86,55 @@ vmGuests () {
                                     -e 's/ /\\ /g'                     `
         vmxDir=${vmxPath%/*}
 
-        # include/exclude specific guests
-        #case $vmName in
-        #    xpMgmt1.yyc) ;;
-        #    *) continue ;;
-        #esac
+        # include/exclude/segregate specific guests
+        case $vmName in
+            xpPrint1.yyc) 
 
-        # write the modList entry
-        {   printf "%s\t" "$vmName" 
-            printf "%s "  "auto=true"
-            printf "%s "  "method=tar"
-            printf "%s "  "path=$vmxDir"
-            printf "%s "  "key=$((++kc))" 
-            echo ""
-        } >>$MOD_LIST
+                # write the modList entry
+                {   printf "%s\t" "$vmName" 
+                    printf "%s "  "auto=true"
+                    printf "%s "  "method=rsync"
+                    printf "%s "  "path=$vmxDir"
+                    printf "%s "  "key=$((++kc))" 
+                    echo ""
+                } >>$MOD_LIST
+                
+                # write the rsync filter file
+                cp "$vmxPath" "$vmxPath.save"
+                {   echo $vmxPath.save
+                    ls $vmxDir/*.vmsd
+                    ls $vmxDir/*.vmxf
+                    ls $vmxDir/*-aux.xml
+                    getAllVmdk "$vmxPath"
+                } | sed -e "s:^${vmxDir}/::"   \
+                  | sed -e 's:^:+ :'   \
+                  > $vmxDir/$RSYNC_FILTER_FILE
+                echo '- **' >> $vmxDir/$RSYNC_FILTER_FILE
+          
+                ;;
 
-        # write the tar include file list
-        cp "$vmxPath" "$vmxPath.save"
-        {  echo $vmxPath.save
-            ls $vmxDir/*.vmsd
-            ls $vmxDir/*.vmxf
-            getAllVmdk "$vmxPath"
-        }  > $TAR_INC_PATH_PREFIX.$vmName
-       # } | sed -e 's/ /\\\\ /g' > $TAR_INC_PATH_PREFIX.$vmName
-
+            *) 
+                # write the modList entry
+                {   printf "%s\t" "$vmName" 
+                    printf "%s "  "auto=true"
+                    printf "%s "  "method=tar"
+                    printf "%s "  "path=$vmxDir"
+                    printf "%s "  "key=$((++kc))" 
+                    echo ""
+                } >>$MOD_LIST
+        
+                # write the tar include file list
+                cp "$vmxPath" "$vmxPath.save"
+                {   echo $vmxPath.save
+                    ls $vmxDir/*.vmsd
+                    ls $vmxDir/*.vmxf
+                    getAllVmdk "$vmxPath"
+                }  > $TAR_INC_PATH_PREFIX.$vmName
+                # } | sed -e 's/ /\\\\ /g' > $TAR_INC_PATH_PREFIX.$vmName
+                
+                ;;
+        esac
+                
         # write the procs file for this module/vmGuest
         writeVmProcs $vmName
     done
@@ -121,6 +145,18 @@ writeVmProcs () {
     modName=$1
     cat > ${0%/*}/procs.$modName <<"__EOF__"
     
+    module_rsync_init() {
+        local requestModule="$1"
+        trap 'vm_snapshot_remove "$requestModule"' 0 1 2 3 4 15
+        vm_snapshot_create "$requestModule"
+    }
+
+    module_rsync_fini() {
+        local requestModule="$1"
+        vm_snapshot_remove "$requestModule"
+        trap - 0 1 2 3 4 15
+    }
+
     module_tar_init() {
         local requestModule="$1"
         trap 'vm_snapshot_remove "$requestModule"' 0 1 2 3 4 15
