@@ -63,6 +63,7 @@ localModules () {
 	opt		auto=true method=rsync path=/opt key=$((++kc))
 	dotSsh		auto=true method=rsync path=/.ssh key=$((++kc))
 	disks		auto=true method=rsync path=/vmfs/volumes/datastoreLocal/_disks key=$((++kc))
+	templates	auto=true method=rsync path=/vmfs/volumes/datastoreLocal/_templates key=$((++kc))
 	__EOF__
 }
 

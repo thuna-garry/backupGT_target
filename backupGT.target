@@ -181,7 +181,7 @@ module_tar_process() {
 ######################################################################
 # zfs processing routines
 ######################################################################
-module_zfs_inin() {
+module_zfs_init() {
     return 0
 }
 module_zfs_fini() {
