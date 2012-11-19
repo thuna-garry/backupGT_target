@@ -117,8 +117,8 @@ createRsyncd () {
         echo "timeout = 600"
         echo "filter = dir-merge /$RSYNC_FILTER_FILE"
         echo ""
-    } > $RSYNC_CONF_PATH_PREFIX.$REQUEST_MODULE
-    cat $RSYNC_CONF_PATH_PREFIX.$REQUEST_MODULE >>$LOG_PATH
+    } > $RSYNC_CONF_PATH_PREFIX.$module
+    cat $RSYNC_CONF_PATH_PREFIX.$module >>$LOG_PATH
 }
 
 
@@ -282,21 +282,21 @@ if [ -n "$SSH_ORIGINAL_COMMAND" ]; then
     MODULE_SPEC="$SSH_ORIGINAL_COMMAND"
 elif [ -n "$KEY" ]; then
     # restricted environment but caller supplied key so run target.modlist
-    #   and searching for the line with the specified key
+    #   and search for the line with the specified key
     # append a space to each key so that key=1 doesn't match key=11, key=123, etc
     MODULE_SPEC="`${0%/*}/target.modList | sed 's/\(key=[0-9]*\)/\1 /' | grep 'key='$KEY' '`"
 else
     # restricted environment but caller supplied no key so assume caller wants _listModules
-    MODULE_SPEC=`printf '%s\t%s' "_listModules" ""`
+    MODULE_SPEC="`printf '%s\t' '_listModules'`"
 fi
 
 if echo "$MODULE_SPEC" | grep -vq '	' ; then
     echo "ERROR: protocol violated MODULE_SPEC missing tab delimeter" >> $LOG_PATH
 fi
 
-REQUEST_MODULE=`echo "$MODULE_SPEC" | sed 's/\(.*\)	\(.*\)/\1/'`   #cut -d "	" -f 1
-REQUEST_PARMS=` echo "$MODULE_SPEC" | sed 's/\(.*\)	\(.*\)/\2/'`   #cut -d "	" -f 2
-REQUEST_METHOD=`echo "$REQUEST_PARMS" | parseAssignment method`
+REQUEST_MODULE=`echo "$MODULE_SPEC" | sed 's/\([_[:alnum:]]*\)	\(.*\)/\1/'`   #cut -d "	" -f 1
+REQUEST_PARMS=` echo "$MODULE_SPEC" | sed 's/\([_[:alnum:]]*\)	\(.*\)/\2/'`   #cut -d "	" -f 2
+REQUEST_METHOD=`echo $REQUEST_PARMS | parseAssignment method`
 logHeader "$0" "$@"
 
 if [ "$REQUEST_MODULE" =  "_listModules" ]; then
