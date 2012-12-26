@@ -24,6 +24,16 @@ ZFS_ROOT_DIR=/data/backupGT # root dir under which all backups are stored
 ZFS_TMP_DS=data/_tmp        # dataset name for temp storage (system with zfs only)
 ZFS_TMP_DS_MAX_SIZE=2000G   # maximue size for temp dataset (system with zfs only)
 
+# When a target system is using zfs it has the option of supplying its data to
+# a backupGT_server by sending a zfs snapshot.  When received by the backupGT_server
+# the snapshot will be labelled with a zfs user property (ZFS_USER_PROP) to
+# indicate that the snapshot is a backup of some target and not a local zfs
+# dataset.  When (and if) the server itself is backed up it is important that no
+# additional snapshots are made as they will not have existed on the originating
+# target (a snapshot such as this should be empty anyways as no changes should
+# be being made to a backed-up data set).
+ZFS_UPROP_IS_BACKUP="backupgt:is_backup"   # user prop to mark dataset as being a backup (yes or no)
+
 
 ############################################################################
 # system specific

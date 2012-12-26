@@ -192,12 +192,13 @@ module_zfs_process() {
     module_zfs_init "$REQUEST_MODULE"
 
     if [ "$?" -eq 0 ]; then
-        local rootDS=`         echo "$REQUEST_PARMS" | parseAssignment rootDS`
-        local relDS=`          echo "$REQUEST_PARMS" | parseAssignment relDS`
-        local tmpDS=`          echo "$REQUEST_PARMS" | parseAssignment tmpDS`
-        local lastSnapLabel=`  echo "$REQUEST_PARMS" | parseAssignment lastSnap`
+        local rootDS=`       echo "$REQUEST_PARMS" | parseAssignment rootDS`
+        local relDS=`        echo "$REQUEST_PARMS" | parseAssignment relDS`
+        local tmpDS=`        echo "$REQUEST_PARMS" | parseAssignment tmpDS`
+        local lastSnapLabel=`echo "$REQUEST_PARMS" | parseAssignment lastSnap`
         local rc=0
         local dataset="$rootDS/$relDS"
+        local localLastSnapLabel=""
 
         echo "`$DATE_CMD`: root dataset      = $rootDS"    >> $LOG_PATH
         echo "`$DATE_CMD`: requested dataset = $relDS"     >> $LOG_PATH
@@ -205,25 +206,34 @@ module_zfs_process() {
         if [ -z "`zfs list -H -o name $dataset`" ]; then
             echo "`$DATE_CMD`: requested dataset $relDS does not exist"  >> $LOG_PATH
             rc=1
-
+        
         else
-            echo "`$DATE_CMD`:    from snapshot = $lastSnapLabel"  >> $LOG_PATH
-            local newSnap=`$DATE_CMD`
-
-            echo "`$DATE_CMD`: generating snapshot $dataset@$newSnap"  >> $LOG_PATH
-            zfs snapshot "$dataset@$newSnap"
+            if [ x"`$ZFS -H -o value $ZFS_UPROP_IS_BACKUP $dataset 2>/dev/null`" = x"yes" ]; then
+                # local dataset is a backup from some other target so don't create
+                # a local snapshot just use the latest received by orginal target
+                localLastSnapLabel=` $ZFS list -H -o name -t snapshot -d 1 -s name "$dataset" \
+                                   | $TAIL -1 \
+                                   | $CUT -d '@' -f 2 `
+                echo "`$DATE_CMD`: target is not originating source"  >> $LOG_PATH
+                echo "`$DATE_CMD`:     using latest received snapshot $dataset@$localLastSnapLabel"  >> $LOG_PATH
+            else
+                localLastSnapLabel=`$DATE_CMD`
+                echo "`$DATE_CMD`: target is the originating source"  >> $LOG_PATH
+                echo "`$DATE_CMD`:     creating new snapshot $dataset@$localLastSnapLabel"  >> $LOG_PATH
+                zfs snapshot "$dataset@$localLastSnapLabel"
+            fi
 
             if [ -z "$lastSnapLabel" ]; then
                 echo "`$DATE_CMD`: export is FULL                      "  >> $LOG_PATH
                 case $REQUEST_METHOD in
                     zfs)
                         echo "`$DATE_CMD`: streaming export to remote end "  >> $LOG_PATH
-                        zfs send -D  "$dataset@$newSnap"
+                        zfs send -D  "$dataset@$localLastSnapLabel"
                         ;;
                     zfs.rsync)
                         zfsCheckModTmp $tmpDS
                         echo "`$DATE_CMD`: writing export to $MOD_TMP_DIR/$REQUEST_MODULE.snapExport.gz "  >> $LOG_PATH
-                        zfs send -D  "$dataset@$newSnap" | gzip -9 > $MOD_TMP_DIR/$REQUEST_MODULE.snapExport.gz
+                        zfs send -D  "$dataset@$localLastSnapLabel" | gzip -9 > $MOD_TMP_DIR/$REQUEST_MODULE.snapExport.gz
                         module_rsync_process 
             #todo       rm -f $MOD_TMP_DIR/$REQUEST_MODULE.snapExport.gz
                         ;;
@@ -235,12 +245,12 @@ module_zfs_process() {
                 case $REQUEST_METHOD in
                     zfs)
                         echo "`$DATE_CMD`: streaming export to remote end "  >> $LOG_PATH
-                        zfs send -D -I "$dataset@$lastSnapLabel" "$dataset@$newSnap"
+                        zfs send -D -I "$dataset@$lastSnapLabel" "$dataset@$localLastSnapLabel"
                         ;;
                     zfs.rsync)
                         zfsCheckModTmp $tmpDS
                         echo "`$DATE_CMD`: writing export to $MOD_TMP_DIR/$REQUEST_MODULE.snapExport.gz "  >> $LOG_PATH
-                        zfs send -D -I "$dataset@$lastSnapLabel" "$dataset@$newSnap" | gzip -9 > $MOD_TMP_DIR/$REQUEST_MODULE.snapExport.gz
+                        zfs send -D -I "$dataset@$lastSnapLabel" "$dataset@$localLastSnapLabel" | gzip -9 > $MOD_TMP_DIR/$REQUEST_MODULE.snapExport.gz
                         module_rsync_process
              #todo      rm -f $MOD_TMP_DIR/$REQUEST_MODULE.snapExport.gz
                         ;;
