@@ -208,9 +208,10 @@ module_zfs_process() {
             rc=1
         
         else
-            if [ x"`$ZFS -H -o value $ZFS_UPROP_IS_BACKUP $dataset 2>/dev/null`" = x"yes" ]; then
-                # local dataset is a backup from some other target so don't create
-                # a local snapshot just use the latest received by orginal target
+            if [    x"`$ZFS -H -o value $ZFS_UPROP_IS_BACKUP $dataset 2>/dev/null`" = x"yes" \
+                 -a x"`$ZFS -H -o value $ZFS_UPROP_METHOD    $dataset 2>/dev/null`" = x"zfs" ]; then
+                # local dataset is a backup from some other zfs based target so don't create
+                # a local snapshot just use the latest received from orginal target
                 localLastSnapLabel=` $ZFS list -H -o name -t snapshot -d 1 -s name "$dataset" \
                                    | $TAIL -1 \
                                    | $CUT -d '@' -f 2 `
