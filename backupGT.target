@@ -200,8 +200,10 @@ module_zfs_process() {
         local dataset="$rootDS/$relDS"
         local localLastSnapLabel=""
 
-        echo "`$DATE_CMD`: root dataset      = $rootDS"    >> $LOG_PATH
-        echo "`$DATE_CMD`: requested dataset = $relDS"     >> $LOG_PATH
+        echo "`$DATE_CMD`: Request:"                                >> $LOG_PATH
+        echo "`$DATE_CMD`:     root dataset      = $rootDS"         >> $LOG_PATH
+        echo "`$DATE_CMD`:     relative dataset  = $relDS"          >> $LOG_PATH
+        echo "`$DATE_CMD`:     lastSnapLabel     = $lastSnapLabel"  >> $LOG_PATH
 
         if [ -z "`zfs list -H -o name $dataset`" ]; then
             echo "`$DATE_CMD`: requested dataset $relDS does not exist"  >> $LOG_PATH
@@ -216,7 +218,7 @@ module_zfs_process() {
                                    | $TAIL -1 \
                                    | $CUT -d '@' -f 2 `
                 echo "`$DATE_CMD`: target is not originating source"  >> $LOG_PATH
-                echo "`$DATE_CMD`:     using latest received snapshot $dataset@$localLastSnapLabel"  >> $LOG_PATH
+                echo "`$DATE_CMD`:     using latest snapshot on target $dataset@$localLastSnapLabel"  >> $LOG_PATH
             else
                 localLastSnapLabel=`$DATE_CMD`
                 echo "`$DATE_CMD`: target is the originating source"  >> $LOG_PATH
@@ -259,7 +261,7 @@ module_zfs_process() {
                 rc=$?
 
             else
-                echo "`$DATE_CMD`: Error: snapshot $lastSnapLabel does not exist"  >> $LOG_PATH
+                echo "`$DATE_CMD`: Error: request's lastSnapLabel $lastSnapLabel does not exist on target"  >> $LOG_PATH
                 rc=1
             fi
         fi
