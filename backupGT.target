@@ -210,13 +210,18 @@ module_zfs_process() {
             rc=1
         
         else
-            if [    x"`$ZFS -H -o value $ZFS_UPROP_IS_BACKUP $dataset 2>/dev/null`" = x"yes" \
-                 -a x"`$ZFS -H -o value $ZFS_UPROP_METHOD    $dataset 2>/dev/null`" = x"zfs" ]; then
+            if [    x"`zfs get -H -o value $ZFS_UPROP_IS_BACKUP $dataset 2>/dev/null`" = x"yes" \
+                 -a x"`zfs get -H -o value $ZFS_UPROP_METHOD    $dataset 2>/dev/null`" = x"zfs" ]; then
                 # local dataset is a backup from some other zfs based target so don't create
                 # a local snapshot just use the latest received from orginal target
-                localLastSnapLabel=` $ZFS list -H -o name -t snapshot -d 1 -s name "$dataset" \
-                                   | $TAIL -1 \
-                                   | $CUT -d '@' -f 2 `
+            echo ======== >> $LOG_PATH
+            echo     localLastSnapLabel= zfs list -H -o name -t snapshot -d 1 -s name "$dataset" >> $LOG_PATH
+            echo                         tail -1                                                >> $LOG_PATH
+            echo                         cut -d '@' -f 2                                        >> $LOG_PATH
+            echo ======== >> $LOG_PATH
+                localLastSnapLabel=` zfs list -H -o name -t snapshot -d 1 -s name "$dataset" \
+                                   | tail -1 \
+                                   | cut -d '@' -f 2 `
                 echo "`$DATE_CMD`: target is not originating source"  >> $LOG_PATH
                 echo "`$DATE_CMD`:     using latest snapshot on target $dataset@$localLastSnapLabel"  >> $LOG_PATH
             else
