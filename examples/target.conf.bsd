@@ -35,6 +35,9 @@ ZFS_TMP_DS_MAX_SIZE=2000G   # maximue size for temp dataset (system with zfs onl
 ZFS_UPROP_IS_BACKUP="backupgt:is_backup"   # user prop to mark dataset as being a backup (yes or no)
 ZFS_UPROP_METHOD="backupgt:method"         # method by which data was received
 
+# When a target system is using zfs it has the option of supplying its data to
+ZFS_SEND_OPTS=""
+
 
 ############################################################################
 # system specific
