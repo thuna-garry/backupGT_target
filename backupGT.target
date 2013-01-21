@@ -217,11 +217,11 @@ module_zfs_process() {
                 localLastSnapLabel=` zfs list -H -o name -t snapshot -d 1 -s name "$dataset" \
                                    | tail -1 \
                                    | cut -d '@' -f 2 `
-                echo "`$DATE_CMD`: target is not originating source"  >> $LOG_PATH
+                echo "`$DATE_CMD`: target is not originating ZFS source"  >> $LOG_PATH
                 echo "`$DATE_CMD`:     using latest snapshot on target $dataset@$localLastSnapLabel"  >> $LOG_PATH
             else
                 localLastSnapLabel=`$DATE_CMD`
-                echo "`$DATE_CMD`: target is the originating source"  >> $LOG_PATH
+                echo "`$DATE_CMD`: target is the originating ZFS source"  >> $LOG_PATH
                 echo "`$DATE_CMD`:     creating new snapshot $dataset@$localLastSnapLabel"  >> $LOG_PATH
                 zfs snapshot "$dataset@$localLastSnapLabel"
             fi
