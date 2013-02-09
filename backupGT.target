@@ -304,11 +304,11 @@ else
 fi
 
 if echo "$MODULE_SPEC" | grep -vq '	' ; then
-    echo "ERROR: protocol violated MODULE_SPEC missing tab delimeter" >> $LOG_PATH
+    echo "ERROR: protocol violated MODULE_SPEC missing tab delimeter" | tee -a $LOG_PATH 1>&2
 fi
 
-REQUEST_MODULE=`echo "$MODULE_SPEC" | sed 's/\([_[:alnum:]].*\)	\(.*\)/\1/'`   #cut -d "	" -f 1
-REQUEST_PARMS=` echo "$MODULE_SPEC" | sed 's/\([_[:alnum:]].*\)	\(.*\)/\2/'`   #cut -d "	" -f 2
+REQUEST_MODULE=`echo "$MODULE_SPEC" | sed 's/\([_[:alnum:]]*\)	*\(.*\)/\1/'`   #cut -d "	" -f 1
+REQUEST_PARMS=` echo "$MODULE_SPEC" | sed 's/\([_[:alnum:]]*\)	*\(.*\)/\2/'`   #cut -d "	" -f 2
 REQUEST_METHOD=`echo $REQUEST_PARMS | parseAssignment method`
 logHeader "$0" "$@"
 
