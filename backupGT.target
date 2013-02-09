@@ -13,6 +13,8 @@ ELAPSED_START=`$ELAPSED_CMD`
 ###############################################################
 # utilities
 ###############################################################
+# [:blank:]   Blank characters: space and tab.
+# [:space:]  Space characters: tab, newline, vertical tab, form feed, carriage return, and space. 
 
 parseAssignment() {
     #-------------
@@ -41,7 +43,7 @@ lop5offEnd () {
     #sh/sed method
     list="$*"
     for i in 1 2 3 4 5; do
-        list=`echo $list | sed 's/[^[:space:]]*$//'`
+        list=`echo $list | sed 's/[^[:blank:]]*$//'`
     done
     echo $list
 }
@@ -307,8 +309,8 @@ if echo "$MODULE_SPEC" | grep -vq '	' ; then
     echo "ERROR: protocol violated MODULE_SPEC missing tab delimeter" | tee -a $LOG_PATH 1>&2
 fi
 
-REQUEST_MODULE=`echo "$MODULE_SPEC" | sed 's/\([_[:alnum:]]*\)	*\(.*\)/\1/'`   #cut -d "	" -f 1
-REQUEST_PARMS=` echo "$MODULE_SPEC" | sed 's/\([_[:alnum:]]*\)	*\(.*\)/\2/'`   #cut -d "	" -f 2
+REQUEST_MODULE=`echo "$MODULE_SPEC" | sed 's/\([^[:blank:]]*\)	*\(.*\)/\1/'`   #cut -d "	" -f 1
+REQUEST_PARMS=` echo "$MODULE_SPEC" | sed 's/\([^[:blank:]]*\)	*\(.*\)/\2/'`   #cut -d "	" -f 2
 REQUEST_METHOD=`echo $REQUEST_PARMS | parseAssignment method`
 logHeader "$0" "$@"
 
