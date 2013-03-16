@@ -9,20 +9,36 @@
 # - data lines consist of two fields (moduleName, comment) separated by a tab
 #
 # - each comment may contain the following options
-#   method    scope: all            suppliedBy: targetHost (required)
-#   auto      scope: any            suppliedBy: targetHost (optional)
-#   relDS     scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
-#   origHost  scope: rsync,tar      suppliedBy: targetHost (optional)
-#   origMod   scope: rsync,tar      suppliedBy: targetHost (optional)
-#   origName  scope: rsync,tar      suppliedBy: targetHost (optional)
-#   key       scope: rsync,tar      suppliedBy: targetHost (optional)
-#   lastSnap  scope: zfs,zfs.rsync  suppliedBy: backupServer (required)
+#   method          scope: all            suppliedBy: targetHost (required)
+#   auto            scope: any            suppliedBy: targetHost (optional)
+#   relDS           scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
+#   origHost        scope: rsync,tar      suppliedBy: targetHost (optional)
+#   origMod         scope: rsync,tar      suppliedBy: targetHost (optional)
+#   origName        scope: rsync,tar      suppliedBy: targetHost (optional)
+#   key             scope: rsync,tar      suppliedBy: targetHost (optional)
+#   lastSnap        scope: zfs,zfs.rsync  suppliedBy: backupServer (required)
+#   utcWindowStart  scope: any            suppliedBy: targetHost (optional)
+#   utcWindowEnd    scope: any            suppliedBy: targetHost (optional)
 #
 # - additional options unused by the backupGT.server
 #   path      scope: rsync,tar      suppliedBy: targetHost (required)
 #   rootDS    scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
 #   tmpDS     scope: zfs.rsync      suppliedBy: targetHost (required)
 #-------------------------------------------------------------------------------
+
+localTime2utc() {
+    local ltime=$1
+    tzoffset=`date +%z`00
+    if echo "$tzoffset" | grep -q -- -; then
+        # tzoffset is negative
+        tzoffset=`echo $tzoffset | sed -e 's/^.//'`
+        printf "neg %06d" $(( (10#$ltime + 10#$tzoffset + 240000) % 240000 ))
+    else
+        # tzoffset is positive
+        tzoffset=`echo $tzoffset | sed -e 's/^.//'`
+        printf "pos %06d" $(( (10#$ltime - 10#$tzoffset + 240000) % 240000 ))
+    fi
+}
 
 MOD_LIST=$MOD_LIST_PATH.$$
 
