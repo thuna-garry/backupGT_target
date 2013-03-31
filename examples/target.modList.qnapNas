@@ -1,0 +1,132 @@
+#! /bin/sh 
+
+###############################################################
+# script to create a list of modules to be backed up
+###############################################################
+. ${0%/*}/target.conf
+
+#-------------------------------------------------------------------------------
+# - data lines consist of two fields (moduleName, comment) separated by a tab
+#
+# - each comment may contain the following options
+#   method          scope: all            suppliedBy: targetHost (required)
+#   auto            scope: any            suppliedBy: targetHost (optional)
+#   relDS           scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
+#   origHost        scope: rsync,tar      suppliedBy: targetHost (optional)
+#   origMod         scope: rsync,tar      suppliedBy: targetHost (optional)
+#   origName        scope: rsync,tar      suppliedBy: targetHost (optional)
+#   key             scope: rsync,tar      suppliedBy: targetHost (optional)
+#   lastSnap        scope: zfs,zfs.rsync  suppliedBy: backupServer (required)
+#   utcWindowStart  scope: any            suppliedBy: targetHost (optional)
+#   utcWindowEnd    scope: any            suppliedBy: targetHost (optional)
+#
+# - additional options unused by the backupGT.server
+#   path      scope: rsync,tar      suppliedBy: targetHost (required)
+#   rootDS    scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
+#   tmpDS     scope: zfs.rsync      suppliedBy: targetHost (required)
+#-------------------------------------------------------------------------------
+
+localTime2utc() {
+    local ltime=$1
+    tzoffset=`date +%z`00
+    if echo "$tzoffset" | grep -q -- -; then
+        # tzoffset is negative
+        tzoffset=`echo $tzoffset | sed -e 's/^.//'`
+        printf "%06d" $(( (10#$ltime + 10#$tzoffset + 240000) % 240000 ))
+    else
+        # tzoffset is positive
+        tzoffset=`echo $tzoffset | sed -e 's/^.//'`
+        printf "%06d" $(( (10#$ltime - 10#$tzoffset + 240000) % 240000 ))
+    fi
+}
+
+
+############################################################################
+# local modules
+############################################################################
+cat <<-EOF
+	root		auto=true method=rsync path=/root
+	opt		auto=true method=rsync path=/share/MD0_DATA/.qpkg/Optware
+	shareMD0custom	auto=true method=rsync path=/share/MD0_DATA/custom
+EOF
+
+utcWindowStart=`localTime2utc 173000`
+utcWindowEnd=`  localTime2utc 053000`
+
+for hostDir in /share/backupGT/*; do
+    for modDir in $hostDir/*; do
+        host=${hostDir##*/}
+        mod=${modDir##*/}
+        lastBackupDir=`ls -d $modDir/${mod}*_? | tail -1`
+        echo -n "${host}+${mod}         auto=true method=rsync path=${lastBackupDir} "
+        echo -n                        "origHost=${host} origMod=${mod} origName=${lastBackupDir##*/} "
+        echo                           "utcWindowStart=${utcWindowStart} utcWindowEnd=${utcWindowEnd} "
+    done
+done
+
+
+cat > ${PROC_PATH_PREFIX}.opt <<"__EOF__"
+    module_rsync_init() {
+        crontab -l -u backupGT > /opt/backupGT/crontab.save  2>/dev/null
+        return 0
+    }
+__EOF__
+
+
+#cat > ${PROC_PATH_PREFIX}.files1.gtf <<"__EOF__"
+#    module_rsync_init() {
+#        srcRoot=/share/backupGT/$1
+#        tmpRoot=/tmp/$1
+#        mkdir -p $tmpRoot               >/dev/null 2>&1
+#        for i in `ls $srcRoot`; do
+#            if [ -L $srcRoot/$i/current ]; then
+#                umount $tmpRoot/$i      >/dev/null 2>&1
+#                mkdir -p $tmpRoot/$i    >/dev/null 2>&1
+#                mount --bind $srcRoot/$i/current $tmpRoot/$i
+#            fi
+#        done
+#        return 0
+#    }
+#    module_rsync_fini() {
+#        srcRoot=/share/backupGT/$1
+#        tmpRoot=/tmp/$files1.gtf
+#        for i in `ls $srcRoot`; do
+#            if [ -L $srcRoot/$i/current ]; then
+#                umount $tmpRoot/$i    >/dev/null 2>&1
+#                rmdir  $tmpRoot/$i    >/dev/null 2>&1
+#            fi
+#        done
+#        rmdir $tmpRoot
+#        return 0
+#    }
+#__EOF__
+
+
+#cat > ${PROC_PATH_PREFIX}.files1.jax <<"__EOF__"
+#    module_rsync_init() {
+#        srcRoot=/share/backupGT/$1
+#        tmpRoot=/tmp/$1
+#        mkdir -p $tmpRoot               >/dev/null 2>&1
+#        for i in `ls $srcRoot`; do
+#            if [ -L $srcRoot/$i/current ]; then
+#                umount $tmpRoot/$i      >/dev/null 2>&1
+#                mkdir -p $tmpRoot/$i    >/dev/null 2>&1
+#                mount --bind $srcRoot/$i/current $tmpRoot/$i
+#            fi
+#        done
+#        return 0
+#    }
+#    module_rsync_fini() {
+#        srcRoot=/share/backupGT/$1
+#        tmpRoot=/tmp/$1
+#        for i in `ls $srcRoot`; do
+#            if [ -L $srcRoot/$i/current ]; then
+#                umount $tmpRoot/$i    >/dev/null 2>&1
+#                rmdir  $tmpRoot/$i    >/dev/null 2>&1
+#            fi
+#        done
+#        rmdir $tmpRoot
+#        return 0
+#    }
+#__EOF__
+
