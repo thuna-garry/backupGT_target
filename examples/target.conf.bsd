@@ -58,6 +58,14 @@ if [ "$SYSTEM_TYPE" = "linux" ]; then
 fi
 
 #----
+# qnapNas
+#----
+if [ "$SYSTEM_TYPE" = "qnapNas" ]; then
+   RSYNC_CMD="rsync --sever-mode=0 "
+   TAR_CMD="tar cvf -"
+fi
+
+#----
 # bsd
 #----
 if [ "$SYSTEM_TYPE" = "bsd" ]; then
@@ -73,7 +81,6 @@ if [ "$SYSTEM_TYPE" = "esxi" ]; then
    TAR_CMD="tar cvf -"
    SNAP_WAIT=5  #minuts to wait for snapshot creation
 fi
-
 
 #----
 # windows
