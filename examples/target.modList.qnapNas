@@ -54,7 +54,9 @@ utcWindowStart=`localTime2utc 173000`
 utcWindowEnd=`  localTime2utc 053000`
 
 for hostDir in /share/backupGT/*; do
+    [ -f $hostDir/_backupGT_archive ] && continue
     for modDir in $hostDir/*; do
+        [ -f $modDir/_backupGT_archive ] && continue
         host=${hostDir##*/}
         mod=${modDir##*/}
         lastBackupDir=`ls -d $modDir/${mod}*_? | tail -1`
