@@ -1,5 +1,11 @@
 VM_TIMESTAMP=`$DATE_CMD`
 
+VM_HOST_VERSION=` vim-cmd hostsvc/hostsummary   \
+                | grep -- apiVersion            \
+                | sed 's/^[^"]*"//'             \
+                | sed 's/".*$//'                `
+
+
 ############################################################################
 # procs for esxi vm guests
 ############################################################################
@@ -41,19 +47,40 @@ vm_snapshot_remove () {
     local vmId=`vm_getVmId "$vmName"`
     local vmSnapName="backupGT_$VM_TIMESTAMP"
     
-    # set the remove parameters
-    local removeChildren=0
-    local snapLevel=`vm_getSnapLevel "$vmId" "$vmSnapName"`
-    local snapshotIndex=0
-    
-    # provide feedback
-    echo "Removing snapshot: $vmSnapName"
-    echo "             vmId: $vmId"
-    echo "       snap level: $snapLevel"
-    echo "  removal command: vim-cmd vmsvc/snapshot.remove $vmId $removeChildren $snapLevel $snapshotIndex"
-    
-    # do the removal
-    vim-cmd vmsvc/snapshot.remove $vmId $removeChildren $snapLevel $snapshotIndex
+    case "$VM_HOST_VERSION" in
+        4.* )
+                # set the remove parameters
+                local removeChildren=0
+                local snapLevel=`vm_getSnapLevel "$vmId" "$vmSnapName"`
+                local snapshotIndex=0
+                
+                # provide feedback
+                echo "Removing snapshot: $vmSnapName"
+                echo "             vmId: $vmId"
+                echo "       snap level: $snapLevel"
+                echo "  removal command: vim-cmd vmsvc/snapshot.remove $vmId $removeChildren $snapLevel $snapshotIndex"
+                
+                # do the removal
+                vim-cmd vmsvc/snapshot.remove $vmId $removeChildren $snapLevel $snapshotIndex
+                ;;
+        5.* )
+                # set the remove parameters
+                local snapId=`vm_getSnapId "$vmId" "$vmSnapName"`
+                local removeChildren=0
+                
+                # provide feedback
+                echo "Removing snapshot: $vmSnapName"
+                echo "             vmId: $vmId"
+                echo "          snap id: $snapId"
+                echo "  removal command: vim-cmd vmsvc/snapshot.remove $vmId $snapId $removeChildren"
+                
+                # do the removal
+                vim-cmd vmsvc/snapshot.remove $vmId $snapId $removeChildren
+                ;;
+        * )
+                echo "Unknown host version $VM_HOST_VERSION"
+                ;;
+    esac
 } >> $LOG_PATH 2>&1
 
 
@@ -77,3 +104,14 @@ vm_getSnapLevel () {
     fi
 }
 
+
+vm_getSnapId () {
+    local vmId="$1"
+    local vmSnapName="$2"
+    local snapId=` vim-cmd vmsvc/snapshot.get $vmId \
+                 | grep -A 1 -- "$vmSnapName"       \
+                 | tail -1                          \
+                 | sed 's/^[^0-9]*//'               \
+                 | sed 's/[^0-9]*$//'               `
+    echo $snapId
+}
