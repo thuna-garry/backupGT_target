@@ -7,7 +7,7 @@
 
 #----
 # The type of server that we are running on
-# should be one of 'bsd', 'linux', 'esxi', 'windows'
+# should be one of 'bsd', 'linux', 'esxi', 'windows', 'qnapNas'
 #----
 SYSTEM_TYPE=qnapNas
 

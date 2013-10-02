@@ -44,16 +44,16 @@ localTime2utc() {
 ############################################################################
 # local modules
 ############################################################################
-cat <<-EOF
-	root		auto=true method=rsync path=/root
-	opt		auto=true method=rsync path=/share/MD0_DATA/.qpkg/Optware
-	shareMD0custom	auto=true method=rsync path=/share/MD0_DATA/custom
-EOF
-
 utcWindowStart=`localTime2utc 173000`
 utcWindowEnd=`  localTime2utc 053000`
 
-for hostDir in /share/backupGT/*; do
+cat <<-EOF
+	root		auto=true method=rsync path=/root                  utcWindowStart=${utcWindowStart} utcWindowEnd=${utcWindowEnd}
+	shareMD0custom	auto=true method=rsync path=/share/MD0_DATA/custom utcWindowStart=${utcWindowStart} utcWindowEnd=${utcWindowEnd}
+EOF
+
+
+for hostDir in $STORAGE_ROOT/*; do
     [ -f $hostDir/_backupGT_archive ] && continue
     for modDir in $hostDir/*; do
         [ -f $modDir/_backupGT_archive ] && continue
@@ -67,9 +67,9 @@ for hostDir in /share/backupGT/*; do
 done
 
 
-cat > ${PROC_PATH_PREFIX}.opt <<"__EOF__"
+cat > ${PROC_PATH_PREFIX}.root <<"__EOF__"
     module_rsync_init() {
-        crontab -l -u backupGT > /opt/backupGT/crontab.save  2>/dev/null
+        crontab -l > /root/crontab.save  2>/dev/null
         return 0
     }
 __EOF__
