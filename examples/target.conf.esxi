@@ -77,7 +77,7 @@ fi
 # esxi
 #----
 if [ "$SYSTEM_TYPE" = "esxi" ]; then
-   RSYNC_CMD=${0%/*}/rsync-static
+   RSYNC_CMD=${0%/*}/rsync.esx/rsync-static
    TAR_CMD="tar cvf -"
    SNAP_WAIT=5  #minuts to wait for snapshot creation
 fi
