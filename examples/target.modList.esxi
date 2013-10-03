@@ -76,11 +76,14 @@ getAllVmdk () {
 ############################################################################
 localModules () {
     cat <<-__EOF__ >>$MOD_LIST
-	opt		auto=true method=rsync path=/opt key=$((++kc))
-	dotSsh		auto=true method=rsync path=/.ssh key=$((++kc))
-	disks		auto=true method=rsync path=/vmfs/volumes/datastoreLocal/_disks key=$((++kc))
+	opt             auto=true method=rsync origHost=esxHost1.yyc path=/opt                                          key=$((++kc))
+	dotSsh          auto=true method=rsync origHost=esxHost1.yyc path=/.ssh                                         key=$((++kc))
+	disks           auto=true method=rsync origHost=esxHost1.yyc path=/vmfs/volumes/datastoreLocal/_disks           key=$((++kc))
+	templates       auto=true method=rsync origHost=esxHost1.yyc path=/vmfs/volumes/datastoreLocal/_templates       key=$((++kc))
+	incomminBackups auto=true method=rsync origHost=esxHost1.yyc path=/vmfs/volumes/datastoreLocal/incommingBackups key=$((++kc))
 	__EOF__
 }
+
 
                             
 ############################################################################
@@ -102,19 +105,19 @@ vmGuests () {
                                     -e 's/ /\\ /g'                     `
         vmxDir=${vmxPath%/*}
 
+
         # include/exclude/segregate specific guests
         case $vmName in
-            xpPrint1.yyc) 
-
+            generic.rsync )
                 # write the modList entry
-                {   printf "%s\t" "$vmName" 
+                {   printf "%s\t" "$vmName"
                     printf "%s "  "auto=true"
                     printf "%s "  "method=rsync"
                     printf "%s "  "path=$vmxDir"
-                    printf "%s "  "key=$((++kc))" 
+                    printf "%s "  "key=$((++kc))"
                     echo ""
                 } >>$MOD_LIST
-                
+
                 # write the rsync filter file
                 cp "$vmxPath" "$vmxPath.save"
                 {   echo $vmxPath.save
@@ -126,10 +129,10 @@ vmGuests () {
                   | sed -e 's:^:+ :'   \
                   > $vmxDir/$RSYNC_FILTER_FILE
                 echo '- **' >> $vmxDir/$RSYNC_FILTER_FILE
-          
+
                 ;;
 
-            *) 
+            generic.tar ) 
                 # write the modList entry
                 {   printf "%s\t" "$vmName" 
                     printf "%s "  "auto=true"
@@ -148,6 +151,30 @@ vmGuests () {
                 }  > $TAR_INC_PATH_PREFIX.$vmName
                 # } | sed -e 's/ /\\\\ /g' > $TAR_INC_PATH_PREFIX.$vmName
                 
+                ;;
+
+            * )
+                # write the modList entry
+                {   printf "%s\t" "$vmName"
+                    printf "%s "  "auto=true"
+                    printf "%s "  "method=rsync"
+                    printf "%s "  "path=$vmxDir"
+                    printf "%s "  "key=$((++kc))"
+                    echo ""
+                } >>$MOD_LIST
+
+                # write the rsync filter file
+                cp "$vmxPath" "$vmxPath.save"
+                {   echo $vmxPath.save
+                    ls $vmxDir/*.vmsd
+                    ls $vmxDir/*.vmxf
+                    ls $vmxDir/*-aux.xml
+                    getAllVmdk "$vmxPath"
+                } | sed -e "s:^${vmxDir}/::"   \
+                  | sed -e 's:^:+ :'   \
+                  > $vmxDir/$RSYNC_FILTER_FILE
+                echo '- **' >> $vmxDir/$RSYNC_FILTER_FILE
+
                 ;;
         esac
                 
