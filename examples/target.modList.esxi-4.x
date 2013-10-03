@@ -76,11 +76,11 @@ getAllVmdk () {
 ############################################################################
 localModules () {
     cat <<-__EOF__ >>$MOD_LIST
-	opt             auto=true method=rsync origHost=esxHost1.yyc path=/opt                                          key=$((++kc))
-	dotSsh          auto=true method=rsync origHost=esxHost1.yyc path=/.ssh                                         key=$((++kc))
-	disks           auto=true method=rsync origHost=esxHost1.yyc path=/vmfs/volumes/datastoreLocal/_disks           key=$((++kc))
-	templates       auto=true method=rsync origHost=esxHost1.yyc path=/vmfs/volumes/datastoreLocal/_templates       key=$((++kc))
-	incomminBackups auto=true method=rsync origHost=esxHost1.yyc path=/vmfs/volumes/datastoreLocal/incommingBackups key=$((++kc))
+	opt		auto=true method=rsync origHost=esxHost1.yyc path=/opt                                          key=$((++kc))
+	dotSsh		auto=true method=rsync origHost=esxHost1.yyc path=/.ssh                                         key=$((++kc))
+	disks		auto=true method=rsync origHost=esxHost1.yyc path=/vmfs/volumes/datastoreLocal/_disks           key=$((++kc))
+	templates	auto=true method=rsync origHost=esxHost1.yyc path=/vmfs/volumes/datastoreLocal/_templates       key=$((++kc))
+	incomminBackups	auto=true method=rsync origHost=esxHost1.yyc path=/vmfs/volumes/datastoreLocal/incommingBackups key=$((++kc))
 	__EOF__
 }
 
