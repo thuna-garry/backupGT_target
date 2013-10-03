@@ -48,25 +48,33 @@ MOD_LIST=$MOD_LIST_PATH.$$
 ############################################################################
 getAllVmdk () {
     #BUGS: requires all virtual disks to have a .vmdk extension
-    #      to ensure that copy is fully functional all disks are copied
-    #        including independent disks and snapshots
+    #      independent disks are EXCLUDED (which generally will also exclude raw disks)
     vmxPath="$1"
     vmxDir="${1%/*}"
     diskIds=` grep -iE '(scsi|ide)' "$vmxPath"  \
             | grep -i "\.fileName = .*\.vmdk"   \
             | sed 's/\..*//'                    `
     for diskId in $diskIds; do
-        if grep -qi "^${diskId}\.present =.*true" "$vmxPath"; then       #device is present
-            # list all vmdk files for the current diskId
-            baseVmdkFile=` grep -i "^${diskId}\.fileName =" "$vmxPath"  \
-                         | sed 's/^.* = *//'                            \
-                         | sed 's/^"//'                                 \
-                         | sed 's/"$//'                                 \
-                         | sed 's/\.vmdk$//'                            \
-                         | sed 's/[-][0-9][0-9][0-9][0-9][0-9][0-9]$//' `
+        if ! grep -qi "^${diskId}\.present =.*true" "$vmxPath"; then       #device is not present
+            continue
+        fi
+        if grep -qi "^${diskId}\.mode =.*independent" "$vmxPath"; then     #cannot snapshot this device
+            continue
+        fi
+        # list all vmdk files for the current diskId
+        baseVmdkFile=` grep -i "^${diskId}\.fileName =" "$vmxPath"  \
+                     | sed 's/^.* = *//'                            \
+                     | sed 's/^"//'                                 \
+                     | sed 's/"$//'                                 \
+                     | sed 's/\.vmdk$//'                            \
+                     | sed 's/[-][0-9][0-9][0-9][0-9][0-9][0-9]$//' `
+        if [ "`echo $baseVmdkFile | cut -b 1`" = "/" ]; then
+            ls ${baseVmdkFile}-*.vmdk
+            ls ${baseVmdkFile}.vmdk
+        else
             ls ${vmxDir}/${baseVmdkFile}-*.vmdk
             ls ${vmxDir}/${baseVmdkFile}.vmdk
-        fi 
+        fi
     done
 }
 
