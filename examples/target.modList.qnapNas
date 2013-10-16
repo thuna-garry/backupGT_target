@@ -32,11 +32,11 @@ localTime2utc() {
     if echo "$tzoffset" | grep -q -- -; then
         # tzoffset is negative
         tzoffset=`echo $tzoffset | sed -e 's/^.//'`
-        printf "%06d" $(( (10#$ltime + 10#$tzoffset + 240000) % 240000 ))
+        printf "%06d" $(( (999$ltime + 999$tzoffset + 240000) % 240000 ))
     else
         # tzoffset is positive
         tzoffset=`echo $tzoffset | sed -e 's/^.//'`
-        printf "%06d" $(( (10#$ltime - 10#$tzoffset + 240000) % 240000 ))
+        printf "%06d" $(( (999$ltime - 999$tzoffset + 240000) % 240000 ))
     fi
 }
 

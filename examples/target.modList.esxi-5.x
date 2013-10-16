@@ -32,11 +32,11 @@ localTime2utc() {
     if echo "$tzoffset" | grep -q -- -; then
         # tzoffset is negative
         tzoffset=`echo $tzoffset | sed -e 's/^.//'`
-        printf "%06d" $(( (10#$ltime + 10#$tzoffset + 240000) % 240000 ))
+        printf "%06d" $(( (999$ltime + 999$tzoffset + 240000) % 240000 ))
     else
         # tzoffset is positive
         tzoffset=`echo $tzoffset | sed -e 's/^.//'`
-        printf "%06d" $(( (10#$ltime - 10#$tzoffset + 240000) % 240000 ))
+        printf "%06d" $(( (999$ltime - 999$tzoffset + 240000) % 240000 ))
     fi
 }
 
@@ -96,6 +96,9 @@ localModules () {
 ############################################################################
 # vm guests
 ############################################################################
+utcWindowStart=`printf "%06d" $(( (220000 +  60000 + 240000) % 240000 ))`
+utcWindowEnd=`  printf "%06d" $(( ( 30000 +  60000 + 240000) % 240000 ))`
+
 vmGuests () {
     vim-cmd vmsvc/getallvms | grep ']' | while read line; do
         vmID=`   echo "$line" | awk '{print $1}' `
@@ -164,6 +167,8 @@ vmGuests () {
                     printf "%s "  "auto=true"
                     printf "%s "  "method=rsync"
                     printf "%s "  "path=$vmxDir"
+                    #printf "%s "  "utcWindowStart=$utcWindowStart"
+                    #printf "%s "  "utcWindowEnd=$utcWindowEnd"
                     echo ""
                 } >>$MOD_LIST
 
