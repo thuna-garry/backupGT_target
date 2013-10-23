@@ -136,7 +136,8 @@ vmGuests () {
                     ls $vmxDir/*.vmxf
                     ls $vmxDir/*-aux.xml
                     getAllVmdk "$vmxPath"
-                } | sed -e "s:^${vmxDir}/::"   \
+                } 2> /dev/null \
+                  | sed -e "s:^${vmxDir}/::"   \
                   | sed -e 's:^:+ :'   \
                   > $vmxDir/$RSYNC_FILTER_FILE
                 echo '- **' >> $vmxDir/$RSYNC_FILTER_FILE
@@ -158,8 +159,10 @@ vmGuests () {
                 {   echo $vmxPath.save
                     ls $vmxDir/*.vmsd
                     ls $vmxDir/*.vmxf
+                    ls $vmxDir/*-aux.xml
                     getAllVmdk "$vmxPath"
-                }  > $TAR_INC_PATH_PREFIX.$vmName
+                } 2> /dev/null \
+                  > $TAR_INC_PATH_PREFIX.$vmName
                 # } | sed -e 's/ /\\\\ /g' > $TAR_INC_PATH_PREFIX.$vmName
                 
                 ;;
@@ -183,7 +186,8 @@ vmGuests () {
                     ls $vmxDir/*.vmxf
                     ls $vmxDir/*-aux.xml
                     getAllVmdk "$vmxPath"
-                } | sed -e "s:^${vmxDir}/::"   \
+                } 2> /dev/null \
+                  | sed -e "s:^${vmxDir}/::"   \
                   | sed -e 's:^:+ :'   \
                   > $vmxDir/$RSYNC_FILTER_FILE
                 echo '- **' >> $vmxDir/$RSYNC_FILTER_FILE
