@@ -19,6 +19,7 @@
 #   lastSnap        scope: zfs,zfs.rsync  suppliedBy: backupServer (required)
 #   utcWindowStart  scope: any            suppliedBy: targetHost (optional)
 #   utcWindowEnd    scope: any            suppliedBy: targetHost (optional)
+#   prune           scope: any            suppliedBy: targetHost (optional)
 #
 # - additional options unused by the backupGT.server
 #   path      scope: rsync,tar      suppliedBy: targetHost (required)
@@ -79,11 +80,12 @@ if [ -n "$zfsDatasets" ]; then
         relDsFixed=`echo $relDS  | tr '/' '+'`
         
         printf "%s\t" $relDsFixed
-        printf " %s"     "method=zfs"
-        printf " %s"     "auto=true"
-        printf " %s"     "rootDS=$ZFS_ROOT_DS"
-        printf " %s"     "relDS=$relDS"
-        printf " %s"     "tmpDS=$ZFS_TMP_DS"
+        printf "%s "     "method=zfs"
+        printf "%s "     "auto=true"
+        printf "%s "     "rootDS=$ZFS_ROOT_DS"
+        printf "%s "     "relDS=$relDS"
+        printf "%s "     "tmpDS=$ZFS_TMP_DS"
+        printf "%s "     "prune=10,11,10,12,-1"
         printf "\n"
     done
 fi

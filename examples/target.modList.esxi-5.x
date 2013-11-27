@@ -19,6 +19,7 @@
 #   lastSnap        scope: zfs,zfs.rsync  suppliedBy: backupServer (required)
 #   utcWindowStart  scope: any            suppliedBy: targetHost (optional)
 #   utcWindowEnd    scope: any            suppliedBy: targetHost (optional)
+#   prune           scope: any            suppliedBy: targetHost (optional)
 #
 # - additional options unused by the backupGT.server
 #   path      scope: rsync,tar      suppliedBy: targetHost (required)
@@ -174,6 +175,7 @@ vmGuests () {
                     printf "%s "  "path=$vmxDir"
                     #printf "%s "  "utcWindowStart=$utcWindowStart"
                     #printf "%s "  "utcWindowEnd=$utcWindowEnd"
+                    printf "%s "  "prune=10,11,10,12,-1"
                     echo ""
                 } >>$MOD_LIST
 

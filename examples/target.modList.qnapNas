@@ -19,6 +19,7 @@
 #   lastSnap        scope: zfs,zfs.rsync  suppliedBy: backupServer (required)
 #   utcWindowStart  scope: any            suppliedBy: targetHost (optional)
 #   utcWindowEnd    scope: any            suppliedBy: targetHost (optional)
+#   prune           scope: any            suppliedBy: targetHost (optional)
 #
 # - additional options unused by the backupGT.server
 #   path      scope: rsync,tar      suppliedBy: targetHost (required)
@@ -48,8 +49,8 @@ utcWindowStart=`localTime2utc 173000`
 utcWindowEnd=`  localTime2utc 053000`
 
 cat <<-EOF
-	root		auto=true method=rsync path=/root                  utcWindowStart=${utcWindowStart} utcWindowEnd=${utcWindowEnd}
-	shareMD0custom	auto=true method=rsync path=/share/MD0_DATA/custom utcWindowStart=${utcWindowStart} utcWindowEnd=${utcWindowEnd}
+	root		auto=true method=rsync path=/root                  utcWindowStart=${utcWindowStart} utcWindowEnd=${utcWindowEnd} prune=0,1,3,0,-1
+	shareMD0custom	auto=true method=rsync path=/share/MD0_DATA/custom utcWindowStart=${utcWindowStart} utcWindowEnd=${utcWindowEnd} prune=0,1,3,0,-1
 EOF
 
 
@@ -62,7 +63,8 @@ for hostDir in $STORAGE_ROOT/*; do
         lastBackupDir=`ls -d $modDir/${mod}*_? | tail -1`
         echo -n "${host}+${mod}         auto=true method=rsync path=${lastBackupDir} "
         echo -n                        "origHost=${host} origMod=${mod} origName=${lastBackupDir##*/} "
-        echo                           "utcWindowStart=${utcWindowStart} utcWindowEnd=${utcWindowEnd} "
+        echo -n                        "utcWindowStart=${utcWindowStart} utcWindowEnd=${utcWindowEnd} "
+        echo                           "prune=10,11,10,12,-1 "
     done
 done
 

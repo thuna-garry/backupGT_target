@@ -19,6 +19,7 @@
 #   lastSnap        scope: zfs,zfs.rsync  suppliedBy: backupServer (required)
 #   utcWindowStart  scope: any            suppliedBy: targetHost (optional)
 #   utcWindowEnd    scope: any            suppliedBy: targetHost (optional)
+#   prune           scope: any            suppliedBy: targetHost (optional)
 #
 # - additional options unused by the backupGT.server
 #   path      scope: rsync,tar      suppliedBy: targetHost (required)
@@ -45,7 +46,7 @@ localTime2utc() {
 # local modules
 ############################################################################
 cat <<-EOF
-	cDrive		auto=true method=rsync path=/cygdrive/c
+	cDrive		auto=true method=rsync path=/cygdrive/c  prune=10,11,10,12,-1
 EOF
 
 
