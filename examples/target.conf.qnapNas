@@ -19,10 +19,10 @@ RSYNC_CONF_PATH_PREFIX="/share/MD0_DATA/custom/log/backupGT.rsyncd"   # loc for 
 
 RSYNC_FILTER_FILE=".backupGT-filter"               # file name for diretory based rsync filters
 
-ZFS_ROOT_DS=data/backupGT   # dataset name under which all backups are stored
-ZFS_ROOT_DIR=/data/backupGT # root dir under which all backups are stored
-ZFS_TMP_DS=data/_tmp        # dataset name for temp storage (system with zfs only)
-ZFS_TMP_DS_MAX_SIZE=2000G   # maximue size for temp dataset (system with zfs only)
+ZFS_ROOT_DS=data            # default dataset name under which module datasets are found
+ZFS_ROOT_DIR=/data          # default directroy under which module subdirectories can be found
+ZFS_TMP_DS=data/_tmp        # default dataset name for temp storage
+ZFS_TMP_DS_MAX_SIZE=2000G   # default maximue size for temp dataset
 
 # When a target system is using zfs it has the option of supplying its data to
 # a backupGT_server by sending a zfs snapshot.  When received by the backupGT_server

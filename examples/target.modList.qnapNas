@@ -12,6 +12,7 @@
 #   method          scope: all            suppliedBy: targetHost (required)
 #   auto            scope: any            suppliedBy: targetHost (optional)
 #   relDS           scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
+#   origSrc         scope: zfs,zfs.rsync  suppliedBy: targetHost (optional)
 #   origHost        scope: rsync,tar      suppliedBy: targetHost (optional)
 #   origMod         scope: rsync,tar      suppliedBy: targetHost (optional)
 #   origName        scope: rsync,tar      suppliedBy: targetHost (optional)
