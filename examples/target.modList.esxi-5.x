@@ -133,9 +133,9 @@ vmGuests () {
                 # write the rsync filter file
                 cp "$vmxPath" "$vmxPath.save"
                 {   echo $vmxPath.save
-                    ls $vmxDir/*.vmsd
-                    ls $vmxDir/*.vmxf
-                    ls $vmxDir/*-aux.xml
+                    ls $vmxDir/*.vmsd  2>/dev/null
+                    ls $vmxDir/*.vmxf  2>/dev/null
+                    ls $vmxDir/*-aux.xml  2>/dev/null
                     getAllVmdk "$vmxPath"
                 } 2> /dev/null \
                   | sed -e "s:^${vmxDir}/::"   \
@@ -157,9 +157,9 @@ vmGuests () {
                 # write the tar include file list
                 cp "$vmxPath" "$vmxPath.save"
                 {   echo $vmxPath.save
-                    ls $vmxDir/*.vmsd
-                    ls $vmxDir/*.vmxf
-                    ls $vmxDir/*-aux.xml
+                    ls $vmxDir/*.vmsd  2>/dev/null
+                    ls $vmxDir/*.vmxf  2>/dev/null
+                    ls $vmxDir/*-aux.xml  2>/dev/null
                     getAllVmdk "$vmxPath"
                 } 2> /dev/null \
                   > $TAR_INC_PATH_PREFIX.$vmName
@@ -182,9 +182,9 @@ vmGuests () {
                 # write the rsync filter file
                 cp "$vmxPath" "$vmxPath.save"
                 {   echo $vmxPath.save
-                    ls $vmxDir/*.vmsd
-                    ls $vmxDir/*.vmxf
-                    ls $vmxDir/*-aux.xml
+                    ls $vmxDir/*.vmsd  2>/dev/null
+                    ls $vmxDir/*.vmxf  2>/dev/null
+                    ls $vmxDir/*-aux.xml  2>/dev/null
                     getAllVmdk "$vmxPath"
                 } 2> /dev/null \
                   | sed -e "s:^${vmxDir}/::"   \
