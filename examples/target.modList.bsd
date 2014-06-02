@@ -12,6 +12,7 @@
 #   method          scope: all            suppliedBy: targetHost (required)
 #   auto            scope: any            suppliedBy: targetHost (optional)
 #   relDS           scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
+#   origSrc         scope: zfs,zfs.rsync  suppliedBy: targetHost (optional)
 #   origHost        scope: rsync,tar      suppliedBy: targetHost (optional)
 #   origMod         scope: rsync,tar      suppliedBy: targetHost (optional)
 #   origName        scope: rsync,tar      suppliedBy: targetHost (optional)
@@ -79,11 +80,18 @@ if [ -n "$zfsDatasets" ]; then
         relDS=`     echo $dsName | sed "s:^$ZFS_ROOT_DS/::"`
         relDsFixed=`echo $relDS  | tr '/' '+'`
         
+        if [ "`zfs get -H -o value $ZFS_UPROP_IS_BACKUP $dsName 2>/dev/null`" = "yes" ]; then
+            origSrc="no"
+        else
+            origSrc="yes"
+        fi
+
         printf "%s\t" $relDsFixed
         printf "%s "     "method=zfs"
         printf "%s "     "auto=true"
         printf "%s "     "rootDS=$ZFS_ROOT_DS"
         printf "%s "     "relDS=$relDS"
+        printf "%s "     "origSrc=$origSrc"
         printf "%s "     "tmpDS=$ZFS_TMP_DS"
         printf "%s "     "prune=10,11,10,12,-1"
         printf "\n"

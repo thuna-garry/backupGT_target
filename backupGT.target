@@ -102,7 +102,8 @@ createRsyncd () {
     local path="`echo $REQUEST_PARMS | parseAssignment path`"
 
     if [ -z "$path" ]; then
-        path=$MOD_TMP_DIR
+        echo "ERROR: protocol violated MODULE_SPEC missing 'path' parameter" | tee -a $LOG_PATH 1>&2
+        exit 1
     fi
     {
         echo ""
@@ -195,9 +196,23 @@ module_zfs_process() {
 
     if [ "$?" -eq 0 ]; then
         local rootDS=`       echo "$REQUEST_PARMS" | parseAssignment rootDS`
-        local relDS=`        echo "$REQUEST_PARMS" | parseAssignment relDS`
         local tmpDS=`        echo "$REQUEST_PARMS" | parseAssignment tmpDS`
+        local relDS=`        echo "$REQUEST_PARMS" | parseAssignment relDS`
         local lastSnapLabel=`echo "$REQUEST_PARMS" | parseAssignment lastSnap`
+
+        if [ -z "$rootDS" ]; then
+            echo "ERROR: protocol violated MODULE_SPEC missing 'rootDS' parameter" | tee -a $LOG_PATH 1>&2
+            exit 1
+        fi
+        if [ -z "$tmpDS" ]; then
+            echo "ERROR: protocol violated MODULE_SPEC missing 'tmpDS' parameter" | tee -a $LOG_PATH 1>&2
+            exit 1
+        fi
+        if [ -z "$relDS" ]; then
+            echo "ERROR: protocol violated MODULE_SPEC missing 'relDS' parameter" | tee -a $LOG_PATH 1>&2
+            exit 1
+        fi
+
         local rc=0
         local modDS="$rootDS/$relDS"
         local localLastSnapLabel=""
@@ -235,7 +250,7 @@ module_zfs_process() {
             # does the lastSnapLabel exist
             if [ -n "$lastSnapLabel" ]; then
 		lastSnapExists=`zfs list -H -o name -t snapshot -d 1 -s name "$modDS" | grep "@${lastSnapLabel}$"`
-                [ -z "$lastSnapExists"] && \
+                [ -z "$lastSnapExists" ] && \
                     echo "`$DATE_CMD`: Requested lastSnapLabel $lastSnapLabel does not exist on target"  >> $LOG_PATH
             fi
 
@@ -248,11 +263,11 @@ module_zfs_process() {
                         zfs send $ZFS_SEND_OPTS "$modDS@$localLastSnapLabel"
                         ;;
                     zfs.rsync)
-                        zfsCheckModTmp $tmpDS
-                        echo "`$DATE_CMD`: writing export to $MOD_TMP_DIR/$REQUEST_MODULE.snapExport.gz "  >> $LOG_PATH
-                        zfs send $ZFS_SEND_OPTS "$modDS@$localLastSnapLabel" | gzip -9 > $MOD_TMP_DIR/$REQUEST_MODULE.snapExport.gz
+                        modTmpDir=`zfsCheckModTmp $tmpDS`
+                        echo "`$DATE_CMD`: writing export to $modTmpDir/$REQUEST_MODULE.snapExport.gz "  >> $LOG_PATH
+                        zfs send $ZFS_SEND_OPTS "$modDS@$localLastSnapLabel" | gzip -9 > $modTmpDir/$REQUEST_MODULE.snapExport.gz
                         module_rsync_process 
-                        #todo       rm -f $MOD_TMP_DIR/$REQUEST_MODULE.snapExport.gz
+                        #todo       rm -f $modTmpDir/$REQUEST_MODULE.snapExport.gz
                         ;;
                 esac
                 rc=$?
@@ -265,11 +280,11 @@ module_zfs_process() {
                         zfs send $ZFS_SEND_OPTS -I "$modDS@$lastSnapLabel" "$modDS@$localLastSnapLabel"
                         ;;
                     zfs.rsync)
-                        zfsCheckModTmp $tmpDS
-                        echo "`$DATE_CMD`: writing export to $MOD_TMP_DIR/$REQUEST_MODULE.snapExport.gz "  >> $LOG_PATH
-                        zfs send $ZFS_SEND_OPTS -I "$modDS@$lastSnapLabel" "$modDS@$localLastSnapLabel" | gzip -9 > $MOD_TMP_DIR/$REQUEST_MODULE.snapExport.gz
+                        modTmpDir=`zfsCheckModTmp $tmpDS`
+                        echo "`$DATE_CMD`: writing export to $modTmpDir/$REQUEST_MODULE.snapExport.gz "  >> $LOG_PATH
+                        zfs send $ZFS_SEND_OPTS -I "$modDS@$lastSnapLabel" "$modDS@$localLastSnapLabel" | gzip -9 > $modTmpDir/$REQUEST_MODULE.snapExport.gz
                         module_rsync_process
-                        #todo      rm -f $MOD_TMP_DIR/$REQUEST_MODULE.snapExport.gz
+                        #todo      rm -f $modTmpDir/$REQUEST_MODULE.snapExport.gz
                         ;;
                 esac
                 rc=$?
@@ -284,12 +299,14 @@ module_zfs_process() {
 
 zfsCheckModTmp () {
     local tmpDS=$1
+    local modTmpDir
 
     if [ -z "`zfs list -H -r -o name $tmpDS 2>/dev/null | grep $tmpDS`" ]; then
         zfs create -o quota=$TMP_DS_MAX_SIZE $tmpDS
     fi
-    MOD_TMP_DIR="`zfs list -H -o mountpoint $tmpDS`"/$REQUEST_MODULE
-    mkdir -p -m 750 $MOD_TMP_DIR
+    modTmpDir="`zfs list -H -o mountpoint $tmpDS`"/$REQUEST_MODULE
+    mkdir -p -m 750 $modTmpDir
+    echo $modTmpDir
 }
 
 
@@ -315,6 +332,7 @@ fi
 
 if echo "$MODULE_SPEC" | grep -vq '	' ; then
     echo "ERROR: protocol violated MODULE_SPEC missing tab delimeter" | tee -a $LOG_PATH 1>&2
+    exit 1
 fi
 
 REQUEST_MODULE=`echo "$MODULE_SPEC" | sed 's/\([^[:blank:]]*\)	*\(.*\)/\1/'`   #cut -d "	" -f 1
