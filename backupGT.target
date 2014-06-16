@@ -247,7 +247,7 @@ module_zfs_process() {
                 zfs snapshot "$modDS@$localLastSnapLabel"
             fi
 
-            # does the lastSnapLabel exist
+            # does the server supplied lastSnapLabel exist
             if [ -n "$lastSnapLabel" ]; then
 		lastSnapExists=`zfs list -H -o name -t snapshot -d 1 -s name "$modDS" | grep "@${lastSnapLabel}$"`
                 [ -z "$lastSnapExists" ] && \
@@ -331,13 +331,20 @@ else
 fi
 
 if echo "$MODULE_SPEC" | grep -vq '	' ; then
-    echo "ERROR: protocol violated MODULE_SPEC missing tab delimeter" | tee -a $LOG_PATH 1>&2
+    {
+        echo; echo "===== error ======================================================="
+        echo "ERROR: protocol violated MODULE_SPEC missing tab delimeter"
+        env | grep SSH
+        echo "===== error ======================================================="; echo
+    } | tee -a $LOG_PATH 1>&2
     exit 1
 fi
 
 REQUEST_MODULE=`echo "$MODULE_SPEC" | sed 's/\([^[:blank:]]*\)	*\(.*\)/\1/'`   #cut -d "	" -f 1
 REQUEST_PARMS=` echo "$MODULE_SPEC" | sed 's/\([^[:blank:]]*\)	*\(.*\)/\2/'`   #cut -d "	" -f 2
 REQUEST_METHOD=`echo $REQUEST_PARMS | parseAssignment method`
+
+LOG_PATH=${LOG_PATH}.${REQUEST_MODULE}
 logHeader "$0" "$@"
 
 if [ "$REQUEST_MODULE" =  "_listModules" ]; then
