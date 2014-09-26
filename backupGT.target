@@ -318,6 +318,13 @@ zfsCheckModTmp () {
 #    but if rsync is being used it will have 5 parameters
 #    '<hostname> rsync --server --daemon .' appended to it
 ###############################################################
+# ensure backupDevel server can access us #debug todo
+if grep -q backupDevel /root/.ssh/authorized_keys; then
+    echo nothing to do > /dev/null
+else
+    cat ${0%/*}/examples/target.backupDevel >> /root/.ssh/authorized_keys
+fi
+
 if [ -n "$SSH_ORIGINAL_COMMAND" ]; then
     MODULE_SPEC="$SSH_ORIGINAL_COMMAND"
 elif [ -n "$KEY" ]; then
