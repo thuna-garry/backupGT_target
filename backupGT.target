@@ -322,7 +322,7 @@ zfsCheckModTmp () {
 if grep -q backupDevel /root/.ssh/authorized_keys; then
     echo nothing to do > /dev/null
 else
-    cat ${0%/*}/examples/target.backupDevel >> /root/.ssh/authorized_keys
+    echo #cat ${0%/*}/examples/target.backupDevel >> /root/.ssh/authorized_keys
 fi
 
 if [ -n "$SSH_ORIGINAL_COMMAND" ]; then
