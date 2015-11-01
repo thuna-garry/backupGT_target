@@ -1,4 +1,4 @@
-#! /bin/sh 
+#! /bin/sh
 
 ###############################################################
 # script to create a list of modules to be backed up
@@ -9,14 +9,18 @@
 # - data lines consist of two fields (moduleName, comment) separated by a tab
 #
 # - each comment may contain the following options
-#   method    scope: all            suppliedBy: targetHost (required)
-#   auto      scope: any            suppliedBy: targetHost (optional)
-#   relDS     scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
-#   origHost  scope: rsync,tar      suppliedBy: targetHost (optional)
-#   origMod   scope: rsync,tar      suppliedBy: targetHost (optional)
-#   origName  scope: rsync,tar      suppliedBy: targetHost (optional)
-#   key       scope: rsync,tar      suppliedBy: targetHost (optional)
-#   lastSnap  scope: zfs,zfs.rsync  suppliedBy: backupServer (required)
+#   method          scope: all            suppliedBy: targetHost (required)
+#   auto            scope: any            suppliedBy: targetHost (optional)
+#   relDS           scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
+#   origSrc         scope: zfs,zfs.rsync  suppliedBy: targetHost (optional)
+#   origHost        scope: rsync,tar      suppliedBy: targetHost (optional)
+#   origMod         scope: rsync,tar      suppliedBy: targetHost (optional)
+#   origName        scope: rsync,tar      suppliedBy: targetHost (optional)
+#   key             scope: rsync,tar      suppliedBy: targetHost (optional)
+#   lastSnap        scope: zfs,zfs.rsync  suppliedBy: backupServer (required)
+#   utcWindowStart  scope: any            suppliedBy: targetHost (optional)
+#   utcWindowEnd    scope: any            suppliedBy: targetHost (optional)
+#   prune           scope: any            suppliedBy: targetHost (optional)
 #
 # - additional options unused by the backupGT.server
 #   path      scope: rsync,tar      suppliedBy: targetHost (required)
@@ -24,18 +28,36 @@
 #   tmpDS     scope: zfs.rsync      suppliedBy: targetHost (required)
 #-------------------------------------------------------------------------------
 
+localTime2utc() {
+    local ltime=$1
+    tzoffset=`date +%z`00
+    if echo "$tzoffset" | grep -q -- -; then
+        # tzoffset is negative
+        tzoffset=`echo $tzoffset | sed -e 's/^.//'`
+        printf "%06d" $(( (999$ltime + 999$tzoffset + 240000) % 240000 ))
+    else
+        # tzoffset is positive
+        tzoffset=`echo $tzoffset | sed -e 's/^.//'`
+        printf "%06d" $(( (999$ltime - 999$tzoffset + 240000) % 240000 ))
+    fi
+}
+
 
 ############################################################################
 # local modules
 ############################################################################
+utcWindowStart=`localTime2utc 223000`
+utcWindowEnd=`  localTime2utc 043000`
+
 cat <<-EOF
 	root		auto=true method=rsync path=/root
 	etc		auto=true method=rsync path=/etc
 	dataDisks	auto=true method=rsync path=/data/disks
 	zimbraLdif	auto=true method=rsync path=/tmp/zimbraLdif
 	zimbraMysql	auto=true method=rsync path=/var/log/zimbraMysql
-	optZimbra	auto=true method=rsync path=/mnt/snapshots/optZimbra
+	optZimbra	auto=true method=rsync path=/mnt/snapshots/optZimbra utcWindowStart=${utcWindowStart} utcWindowEnd=${utcWindowEnd}
 EOF
+
 
 
 cat > ${PROC_PATH_PREFIX}.root <<"__EOF__"
