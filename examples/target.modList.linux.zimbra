@@ -1,0 +1,136 @@
+#! /bin/sh
+
+###############################################################
+# script to create a list of modules to be backed up
+###############################################################
+. ${0%/*}/target.conf
+
+#-------------------------------------------------------------------------------
+# - data lines consist of two fields (moduleName, comment) separated by a tab
+#
+# - each comment may contain the following options
+#   method          scope: all            suppliedBy: targetHost (required)
+#   auto            scope: any            suppliedBy: targetHost (optional)
+#   relDS           scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
+#   origSrc         scope: zfs,zfs.rsync  suppliedBy: targetHost (optional)
+#   origHost        scope: rsync,tar      suppliedBy: targetHost (optional)
+#   origMod         scope: rsync,tar      suppliedBy: targetHost (optional)
+#   origName        scope: rsync,tar      suppliedBy: targetHost (optional)
+#   key             scope: rsync,tar      suppliedBy: targetHost (optional)
+#   lastSnap        scope: zfs,zfs.rsync  suppliedBy: backupServer (required)
+#   utcWindowStart  scope: any            suppliedBy: targetHost (optional)
+#   utcWindowEnd    scope: any            suppliedBy: targetHost (optional)
+#   prune           scope: any            suppliedBy: targetHost (optional)
+#
+# - additional options unused by the backupGT.server
+#   path      scope: rsync,tar      suppliedBy: targetHost (required)
+#   rootDS    scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
+#   tmpDS     scope: zfs.rsync      suppliedBy: targetHost (required)
+#-------------------------------------------------------------------------------
+
+localTime2utc() {
+    local ltime=$1
+    tzoffset=`date +%z`00
+    if echo "$tzoffset" | grep -q -- -; then
+        # tzoffset is negative
+        tzoffset=`echo $tzoffset | sed -e 's/^.//'`
+        printf "%06d" $(( (999$ltime + 999$tzoffset + 240000) % 240000 ))
+    else
+        # tzoffset is positive
+        tzoffset=`echo $tzoffset | sed -e 's/^.//'`
+        printf "%06d" $(( (999$ltime - 999$tzoffset + 240000) % 240000 ))
+    fi
+}
+
+
+############################################################################
+# local modules
+############################################################################
+utcWindowStart=`localTime2utc 223000`
+utcWindowEnd=`  localTime2utc 043000`
+
+cat <<-EOF
+	root		auto=true method=rsync path=/root
+	etc		auto=true method=rsync path=/etc
+	dataDisks	auto=true method=rsync path=/data/disks
+	zimbraLdif	auto=true method=rsync path=/tmp/zimbraLdif
+	zimbraMysql	auto=true method=rsync path=/var/log/zimbraMysql
+	optZimbra	auto=true method=rsync path=/mnt/snapshots/optZimbra utcWindowStart=${utcWindowStart} utcWindowEnd=${utcWindowEnd}
+EOF
+
+
+
+cat > ${PROC_PATH_PREFIX}.root <<"__EOF__"
+    module_rsync_init() {
+        crontab -l -u root > /root/crontab.save 2>/dev/null
+        return 0
+    }
+__EOF__
+
+
+cat > ${PROC_PATH_PREFIX}.zimbraLdif <<"__EOF__"
+    ldif_create () {
+        mkdir -p /tmp/zimbraLdif
+        chown zimbra:root /tmp/zimbraLdif
+        sudo -u zimbra /opt/zimbra/libexec/zmslapcat    /tmp/zimbraLdif
+        sudo -u zimbra /opt/zimbra/libexec/zmslapcat -c /tmp/zimbraLdif
+    } >> $LOG_PATH 2>&1
+
+    ldif_remove () {
+        rm -rf /tmp/zimbraLdif
+    } >> $LOG_PATH 2>&1
+
+    module_rsync_init() {
+        trap ldif_remove 0 1 2 3 4 15
+        ldif_create
+    }
+
+    module_rsync_fini() {
+        ldif_remove
+        trap - 0 1 2 3 4 15
+    }
+__EOF__
+
+
+cat > ${PROC_PATH_PREFIX}.optZimbra <<"__EOF__"
+    snapshot_create () {
+        echo "${TIMESTAMP}:   creating snapshot ..."
+        umount /dev/lvZimbra/lvZimbraSS      > /dev/null 2>&1
+        lvremove -f /dev/vgZimbra/lvZimbraSS > /dev/null 2>&1
+        lvcreate -s -L 1990M -n lvZimbraSS /dev/vgZimbra/lvZimbra
+        mkdir -p /mnt/snapshots/optZimbra
+        mount -t ext4 -oro,noatime,nodiratime /dev/vgZimbra/lvZimbraSS /mnt/snapshots/optZimbra
+        echo "${TIMESTAMP}:   creating snapshot done"
+    } >> $LOG_PATH 2>&1
+    
+    snapshot_remove () {
+        echo "${TIMESTAMP}:   removing snapshot ..."
+        umount /dev/vgZimbra/lvZimbraSS
+        lvs /dev/vgZimbra/lvZimbraSS
+        lvremove -f /dev/vgZimbra/lvZimbraSS
+        echo "${TIMESTAMP}:   removing snapshot done"
+    } >> $LOG_PATH 2>&1
+
+    start_zimbra () {
+        snapshot_remove
+        /etc/init.d/zimbra start
+    } >> $LOG_PATH 2>&1
+
+    module_rsync_init() {
+        crontab -l -u zimbra > /opt/zimbra/crontab.save.$TIMESTAMP
+        su - zimbra -c /opt/zimbra/dumpDatabase.sh    >> $LOG_PATH 2>&1
+        trap start_zimbra 0 1 2 3 4 15
+          /etc/init.d/zimbra stop                     >> $LOG_PATH 2>&1
+          snapshot_create
+          /etc/init.d/zimbra start                    >> $LOG_PATH 2>&1
+        trap snapshot_remove 0 1 2 3 4 15
+          sleep 10
+    }
+
+    module_rsync_fini() {
+        snapshot_remove
+        trap - 0 1 2 3 4 15
+        rm /opt/zimbra/crontab.save.$TIMESTAMP
+    }
+__EOF__
+
