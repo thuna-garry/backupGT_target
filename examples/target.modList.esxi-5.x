@@ -12,6 +12,7 @@
 #   method          scope: all            suppliedBy: targetHost (required)
 #   auto            scope: any            suppliedBy: targetHost (optional)
 #   relDS           scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
+#   origSrc         scope: zfs,zfs.rsync  suppliedBy: targetHost (optional)
 #   origHost        scope: rsync,tar      suppliedBy: targetHost (optional)
 #   origMod         scope: rsync,tar      suppliedBy: targetHost (optional)
 #   origName        scope: rsync,tar      suppliedBy: targetHost (optional)
@@ -19,6 +20,7 @@
 #   lastSnap        scope: zfs,zfs.rsync  suppliedBy: backupServer (required)
 #   utcWindowStart  scope: any            suppliedBy: targetHost (optional)
 #   utcWindowEnd    scope: any            suppliedBy: targetHost (optional)
+#   prune           scope: any            suppliedBy: targetHost (optional)
 #
 # - additional options unused by the backupGT.server
 #   path      scope: rsync,tar      suppliedBy: targetHost (required)
@@ -32,11 +34,11 @@ localTime2utc() {
     if echo "$tzoffset" | grep -q -- -; then
         # tzoffset is negative
         tzoffset=`echo $tzoffset | sed -e 's/^.//'`
-        printf "%06d" $(( (10#$ltime + 10#$tzoffset + 240000) % 240000 ))
+        printf "%06d" $(( (999$ltime + 999$tzoffset + 240000) % 240000 ))
     else
         # tzoffset is positive
         tzoffset=`echo $tzoffset | sed -e 's/^.//'`
-        printf "%06d" $(( (10#$ltime - 10#$tzoffset + 240000) % 240000 ))
+        printf "%06d" $(( (999$ltime - 999$tzoffset + 240000) % 240000 ))
     fi
 }
 
@@ -97,6 +99,9 @@ localModules () {
 ############################################################################
 # vm guests
 ############################################################################
+utcWindowStart=`printf "%06d" $(( (220000 +  60000 + 240000) % 240000 ))`
+utcWindowEnd=`  printf "%06d" $(( ( 30000 +  60000 + 240000) % 240000 ))`
+
 vmGuests () {
     vim-cmd vmsvc/getallvms | grep ']' | while read line; do
         vmID=`   echo "$line" | awk '{print $1}' `
