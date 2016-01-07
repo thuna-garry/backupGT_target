@@ -12,7 +12,6 @@
 #   method          scope: all            suppliedBy: targetHost (required)
 #   auto            scope: any            suppliedBy: targetHost (optional)
 #   relDS           scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
-#   origSrc         scope: zfs,zfs.rsync  suppliedBy: targetHost (optional)
 #   origHost        scope: rsync,tar      suppliedBy: targetHost (optional)
 #   origMod         scope: rsync,tar      suppliedBy: targetHost (optional)
 #   origName        scope: rsync,tar      suppliedBy: targetHost (optional)
@@ -20,7 +19,6 @@
 #   lastSnap        scope: zfs,zfs.rsync  suppliedBy: backupServer (required)
 #   utcWindowStart  scope: any            suppliedBy: targetHost (optional)
 #   utcWindowEnd    scope: any            suppliedBy: targetHost (optional)
-#   prune           scope: any            suppliedBy: targetHost (optional)
 #
 # - additional options unused by the backupGT.server
 #   path      scope: rsync,tar      suppliedBy: targetHost (required)
@@ -34,11 +32,11 @@ localTime2utc() {
     if echo "$tzoffset" | grep -q -- -; then
         # tzoffset is negative
         tzoffset=`echo $tzoffset | sed -e 's/^.//'`
-        printf "%06d" $(( (999$ltime + 999$tzoffset + 240000) % 240000 ))
+        printf "%06d" $(( (10#$ltime + 10#$tzoffset + 240000) % 240000 ))
     else
         # tzoffset is positive
         tzoffset=`echo $tzoffset | sed -e 's/^.//'`
-        printf "%06d" $(( (999$ltime - 999$tzoffset + 240000) % 240000 ))
+        printf "%06d" $(( (10#$ltime - 10#$tzoffset + 240000) % 240000 ))
     fi
 }
 
@@ -88,21 +86,17 @@ localModules () {
     local hostName=`hostname`
     local origHost=${hostName%.*.*}
     cat <<-__EOF__ >>$MOD_LIST
-        opt             auto=true method=rsync origHost=$origHost path=/opt                                          key=$((++kc))
-        dotSsh          auto=true method=rsync origHost=$origHost path=/.ssh                                         key=$((++kc))
-        disks           auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreLocal/_disks           key=$((++kc))
-        templates       auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreLocal/_templates       key=$((++kc))
-        incomminBackups auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreLocal/incommingBackups key=$((++kc))
-        __EOF__
+	keysRoot	auto=true method=rsync origHost=$origHost path=/etc/ssh/keys-root/
+	disks		auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreLocal/_disks           
+	templates	auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreLocal/_templates       
+	incomminBackups	auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreLocal/incommingBackups 
+	__EOF__
 }
 
                             
 ############################################################################
 # vm guests
 ############################################################################
-utcWindowStart=`printf "%06d" $(( (220000 +  60000 + 240000) % 240000 ))`
-utcWindowEnd=`  printf "%06d" $(( ( 30000 +  60000 + 240000) % 240000 ))`
-
 vmGuests () {
     vim-cmd vmsvc/getallvms | grep ']' | while read line; do
         vmID=`   echo "$line" | awk '{print $1}' `
@@ -134,12 +128,11 @@ vmGuests () {
                 # write the rsync filter file
                 cp "$vmxPath" "$vmxPath.save"
                 {   echo $vmxPath.save
-                    ls $vmxDir/*.vmsd  2>/dev/null
-                    ls $vmxDir/*.vmxf  2>/dev/null
-                    ls $vmxDir/*-aux.xml  2>/dev/null
+                    ls $vmxDir/*.vmsd
+                    ls $vmxDir/*.vmxf
+                    ls $vmxDir/*-aux.xml
                     getAllVmdk "$vmxPath"
-                } 2> /dev/null \
-                  | sed -e "s:^${vmxDir}/::"   \
+                } | sed -e "s:^${vmxDir}/::"   \
                   | sed -e 's:^:+ :'   \
                   > $vmxDir/$RSYNC_FILTER_FILE
                 echo '- **' >> $vmxDir/$RSYNC_FILTER_FILE
@@ -158,12 +151,10 @@ vmGuests () {
                 # write the tar include file list
                 cp "$vmxPath" "$vmxPath.save"
                 {   echo $vmxPath.save
-                    ls $vmxDir/*.vmsd  2>/dev/null
-                    ls $vmxDir/*.vmxf  2>/dev/null
-                    ls $vmxDir/*-aux.xml  2>/dev/null
+                    ls $vmxDir/*.vmsd
+                    ls $vmxDir/*.vmxf
                     getAllVmdk "$vmxPath"
-                } 2> /dev/null \
-                  > $TAR_INC_PATH_PREFIX.$vmName
+                }  > $TAR_INC_PATH_PREFIX.$vmName
                 # } | sed -e 's/ /\\\\ /g' > $TAR_INC_PATH_PREFIX.$vmName
                 
                 ;;
@@ -174,21 +165,17 @@ vmGuests () {
                     printf "%s "  "auto=true"
                     printf "%s "  "method=rsync"
                     printf "%s "  "path=$vmxDir"
-                    #printf "%s "  "utcWindowStart=$utcWindowStart"
-                    #printf "%s "  "utcWindowEnd=$utcWindowEnd"
-                    printf "%s "  "prune=10,11,10,12,-1"
                     echo ""
                 } >>$MOD_LIST
 
                 # write the rsync filter file
                 cp "$vmxPath" "$vmxPath.save"
                 {   echo $vmxPath.save
-                    ls $vmxDir/*.vmsd  2>/dev/null
-                    ls $vmxDir/*.vmxf  2>/dev/null
-                    ls $vmxDir/*-aux.xml  2>/dev/null
+                    ls $vmxDir/*.vmsd
+                    ls $vmxDir/*.vmxf
+                    ls $vmxDir/*-aux.xml
                     getAllVmdk "$vmxPath"
-                } 2> /dev/null \
-                  | sed -e "s:^${vmxDir}/::"   \
+                } | sed -e "s:^${vmxDir}/::"   \
                   | sed -e 's:^:+ :'   \
                   > $vmxDir/$RSYNC_FILTER_FILE
                 echo '- **' >> $vmxDir/$RSYNC_FILTER_FILE
