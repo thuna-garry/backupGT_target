@@ -63,7 +63,7 @@ vm_snapshot_remove () {
                 # do the removal
                 vim-cmd vmsvc/snapshot.remove $vmId $removeChildren $snapLevel $snapshotIndex
                 ;;
-        5.* )
+        5.* | 6.*)
                 # set the remove parameters
                 local snapId=`vm_getSnapId "$vmId" "$vmSnapName"`
                 local removeChildren=0
