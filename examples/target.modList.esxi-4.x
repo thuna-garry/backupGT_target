@@ -4,7 +4,7 @@
 # script to create a list of modules to be backed up
 ###############################################################
 . ${0%/*}/target.conf
-. ${0%/*}/target.modlist.any
+. ${0%/*}/target.modList.any
 
 MOD_LIST=$MOD_LIST_PATH.$$
 

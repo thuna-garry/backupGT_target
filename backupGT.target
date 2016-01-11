@@ -45,7 +45,7 @@ logFooter () {
 if [ -n "$SSH_ORIGINAL_COMMAND" ]; then
     MODULE_SPEC="$SSH_ORIGINAL_COMMAND"
 elif [ -n "$KEY" ]; then
-    # restricted environment but caller supplied key so run target.modlist
+    # restricted environment but caller supplied key so run target.modList
     #   and search for the line with the specified key
     # append a space to each key so that key=1 doesn't match key=11, key=123, etc
     MODULE_SPEC="`${0%/*}/target.modList | sed 's/\(key=[0-9]*\)/\1 /' | grep 'key='$KEY' '`"
