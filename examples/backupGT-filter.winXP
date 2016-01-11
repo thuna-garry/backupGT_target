@@ -1,0 +1,22 @@
+##################################################
+# winXP
+##################################################
+
+- pagefile.sys
+- UsrClass.dat
+- UsrClass.dat.log
+- UsrClass.dat.LOG
+
+- NTUSER.DAT
+- ntuser.dat.LOG
+
+- WINDOWS/system32/config/SAM
+- WINDOWS/system32/config/SAM.LOG
+- WINDOWS/system32/config/SECURITY
+- WINDOWS/system32/config/SECURITY.LOG
+- WINDOWS/system32/config/default
+- WINDOWS/system32/config/default.LOG
+- WINDOWS/system32/config/software
+- WINDOWS/system32/config/software.LOG
+- WINDOWS/system32/config/system
+- WINDOWS/system32/config/system.LOG

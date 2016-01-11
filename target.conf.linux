@@ -1,0 +1,5 @@
+#! /bin/sh
+
+RSYNC_CMD="rsync"
+TAR_CMD="tar cvf -"
+

@@ -151,7 +151,7 @@ vm_getDatastores () {
 }
 
 
-getAllVmdk () {
+vm_getAllVmdk () {
     #BUGS: requires all virtual disks to have a .vmdk extension
     #      independent disks are EXCLUDED (which generally will also exclude ra
     vmxPath="$1"
@@ -216,7 +216,7 @@ if [ "foo" = "bar" ]; then
 #                    ls $vmxDir/*.vmsd
 #                    ls $vmxDir/*.vmxf
 #                    ls $vmxDir/*-aux.xml
-#                    getAllVmdk "$vmxPath"
+#                    vm_getAllVmdk "$vmxPath"
 #                } | sed -e "s:^${vmxDir}/::"   \
 #                  | sed -e 's:^:+ :'   \
 #                  > $vmxDir/$RSYNC_FILTER_FILE
@@ -238,7 +238,7 @@ if [ "foo" = "bar" ]; then
 #                {   echo $vmxPath.save
 #                    ls $vmxDir/*.vmsd
 #                    ls $vmxDir/*.vmxf
-#                    getAllVmdk "$vmxPath"
+#                    vm_getAllVmdk "$vmxPath"
 #                }  > $TAR_INC_PATH_PREFIX.$vmName
 #                # } | sed -e 's/ /\\\\ /g' > $TAR_INC_PATH_PREFIX.$vmName
 #

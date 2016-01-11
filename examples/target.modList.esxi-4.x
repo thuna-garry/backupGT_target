@@ -55,7 +55,7 @@ vmGuests () {
                     find $vmxDir -name '*.vmsn'
                     find $vmxDir -name '*.vmxf'
                     find $vmxDir -name '*-aux.xml'
-                    getAllVmdk "$vmxPath"
+                    vm_getAllVmdk "$vmxPath"
                 } | sed -e "s:^/vmfs/volumes::"   \
                   | while read f; do
                         #for each file need to include each parent directory
