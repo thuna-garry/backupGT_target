@@ -4,88 +4,16 @@
 # script to create a list of modules to be backed up
 ###############################################################
 . ${0%/*}/target.conf
-
-#-------------------------------------------------------------------------------
-# - data lines consist of two fields (moduleName, comment) separated by a tab
-#
-# - each comment may contain the following options
-#   method          scope: all            suppliedBy: targetHost (required)
-#   auto            scope: any            suppliedBy: targetHost (optional)
-#   relDS           scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
-#   origSrc         scope: zfs,zfs.rsync  suppliedBy: targetHost (optional)
-#   origHost        scope: rsync,tar      suppliedBy: targetHost (optional)
-#   origMod         scope: rsync,tar      suppliedBy: targetHost (optional)
-#   origName        scope: rsync,tar      suppliedBy: targetHost (optional)
-#   key             scope: rsync,tar      suppliedBy: targetHost (optional)
-#   lastSnap        scope: zfs,zfs.rsync  suppliedBy: backupServer (required)
-#   utcWindowStart  scope: any            suppliedBy: targetHost (optional)
-#   utcWindowEnd    scope: any            suppliedBy: targetHost (optional)
-#   prune           scope: any            suppliedBy: targetHost (optional)
-#
-# - additional options unused by the backupGT.server
-#   path      scope: rsync,tar      suppliedBy: targetHost (required)
-#   rootDS    scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
-#   tmpDS     scope: zfs.rsync      suppliedBy: targetHost (required)
-#-------------------------------------------------------------------------------
-
-localTime2utc() {
-    local ltime=$1
-    tzoffset=`date +%z`00
-    if echo "$tzoffset" | grep -q -- -; then
-        # tzoffset is negative
-        tzoffset=`echo $tzoffset | sed -e 's/^.//'`
-        printf "%06d" $(( (999$ltime + 999$tzoffset + 240000) % 240000 ))
-    else
-        # tzoffset is positive
-        tzoffset=`echo $tzoffset | sed -e 's/^.//'`
-        printf "%06d" $(( (999$ltime - 999$tzoffset + 240000) % 240000 ))
-    fi
-}
+. ${0%/*}/target.modList.any
 
 MOD_LIST=$MOD_LIST_PATH.$$
-
-
-############################################################################
-# utility
-############################################################################
-getAllVmdk () {
-    #BUGS: requires all virtual disks to have a .vmdk extension
-    #      independent disks are EXCLUDED (which generally will also exclude raw disks)
-    vmxPath="$1"
-    vmxDir="${1%/*}"
-    diskIds=` grep -iE '(scsi|ide)' "$vmxPath"  \
-            | grep -i "\.fileName = .*\.vmdk"   \
-            | sed 's/\..*//'                    `
-    for diskId in $diskIds; do
-        if ! grep -qi "^${diskId}\.present =.*true" "$vmxPath"; then       #device is not present
-            continue
-        fi
-        if grep -qi "^${diskId}\.mode =.*independent" "$vmxPath"; then     #cannot snapshot this device
-            continue
-        fi
-        # list all vmdk files for the current diskId
-        baseVmdkFile=` grep -i "^${diskId}\.fileName =" "$vmxPath"  \
-                     | sed 's/^.* = *//'                            \
-                     | sed 's/^"//'                                 \
-                     | sed 's/"$//'                                 \
-                     | sed 's/\.vmdk$//'                            \
-                     | sed 's/[-][0-9][0-9][0-9][0-9][0-9][0-9]$//' `
-        if [ "`echo $baseVmdkFile | cut -b 1`" = "/" ]; then
-            ls ${baseVmdkFile}-*.vmdk
-            ls ${baseVmdkFile}.vmdk
-        else
-            ls ${vmxDir}/${baseVmdkFile}-*.vmdk
-            ls ${vmxDir}/${baseVmdkFile}.vmdk
-        fi
-    done
-}
 
 
 ############################################################################
 # local modules
 ############################################################################
 localModules () {
-    local hostName=`hostname`
+    local hostName=`hostname -f`
     local origHost=${hostName%.*.*}
     cat <<-__EOF__ >>$MOD_LIST
 	keysRoot	auto=true method=rsync origHost=$origHost path=/etc/ssh/keys-root/
@@ -99,92 +27,44 @@ localModules () {
 ############################################################################
 # vm guests
 ############################################################################
-utcWindowStart=`printf "%06d" $(( (220000 +  60000 + 240000) % 240000 ))`
-utcWindowEnd=`  printf "%06d" $(( ( 30000 +  60000 + 240000) % 240000 ))`
+#utcWindowStart=`printf "%06d" $(( (220000 +  60000 + 240000) % 240000 ))`
+#utcWindowEnd=`  printf "%06d" $(( ( 30000 +  60000 + 240000) % 240000 ))`
 
 vmGuests () {
-    vim-cmd vmsvc/getallvms | grep ']' | while read line; do
-        vmID=`   echo "$line" | awk '{print $1}' `
-        vmName=` echo "$line" | sed -e 's/^[^ ]* *//'      \
-                                    -e 's/ *\[.*$//'       \
-                                    -e 's/ /\\ /g'         `
-        vmxFile=`echo "$line" | sed -e 's/^.*] *//'           \
-                                    -e 's/\.vmx  .*/\.vmx/'   \
-                                    -e 's/^.*\///'            \
-                                    -e 's/ /\\ /g'            `
-        vmxPath=`echo "$line" | sed -e 's/^[^[]*\[/\/vmfs\/volumes\//' \
-                                    -e 's/] */\//'                     \
-                                    -e 's/\.vmx  .*/\.vmx/'            \
-                                    -e 's/ /\\ /g'                     `
-        vmxDir=${vmxPath%/*}
-
+    vm_guest_list | while read vmID vmName vmxFile vmxPath vmxDir; do
 
         # include/exclude/segregate specific guests
         case $vmName in
-            generic.rsync )
-                # write the modList entry
-                {   printf "%s\t" "$vmName"
-                    printf "%s "  "auto=true"
-                    printf "%s "  "method=rsync"
-                    printf "%s "  "path=$vmxDir"
-                    echo ""
-                } >>$MOD_LIST
-
-                # write the rsync filter file
-                cp "$vmxPath" "$vmxPath.save"
-                {   echo $vmxPath.save
-                    ls $vmxDir/*.vmsd
-                    ls $vmxDir/*.vmxf
-                    ls $vmxDir/*-aux.xml
-                    getAllVmdk "$vmxPath"
-                } | sed -e "s:^${vmxDir}/::"   \
-                  | sed -e 's:^:+ :'   \
-                  > $vmxDir/$RSYNC_FILTER_FILE
-                echo '- **' >> $vmxDir/$RSYNC_FILTER_FILE
-
-                ;;
-
-            generic.tar ) 
-                # write the modList entry
-                {   printf "%s\t" "$vmName" 
-                    printf "%s "  "auto=true"
-                    printf "%s "  "method=tar"
-                    printf "%s "  "path=$vmxDir"
-                    echo ""
-                } >>$MOD_LIST
-        
-                # write the tar include file list
-                cp "$vmxPath" "$vmxPath.save"
-                {   echo $vmxPath.save
-                    ls $vmxDir/*.vmsd
-                    ls $vmxDir/*.vmxf
-                    getAllVmdk "$vmxPath"
-                }  > $TAR_INC_PATH_PREFIX.$vmName
-                # } | sed -e 's/ /\\\\ /g' > $TAR_INC_PATH_PREFIX.$vmName
-                
-                ;;
-
             * )
                 # write the modList entry
                 {   printf "%s\t" "$vmName"
                     printf "%s "  "auto=true"
                     printf "%s "  "method=rsync"
-                    printf "%s "  "path=$vmxDir"
+                    printf "%s "  "path=/vmfs/volumes"
                     echo ""
                 } >>$MOD_LIST
 
-                # write the rsync filter file
                 cp "$vmxPath" "$vmxPath.save"
-                {   echo $vmxPath.save
-                    ls $vmxDir/*.vmsd
-                    ls $vmxDir/*.vmxf
-                    ls $vmxDir/*-aux.xml
+                
+                # gather the files to be included
+                {
+                    echo $vmxPath.save
+                    find $vmxDir -name '*.vmsd'
+                    find $vmxDir -name '*.vmsn'
+                    find $vmxDir -name '*.vmxf'
+                    find $vmxDir -name '*-aux.xml'
                     getAllVmdk "$vmxPath"
-                } | sed -e "s:^${vmxDir}/::"   \
-                  | sed -e 's:^:+ :'   \
-                  > $vmxDir/$RSYNC_FILTER_FILE
-                echo '- **' >> $vmxDir/$RSYNC_FILTER_FILE
-
+                } | sed -e "s:^/vmfs/volumes::"   \
+                  | while read f; do
+                        #for each file need to include each parent directory
+                        while [ "$f" != "//" ]; do
+                            echo "+ $f"
+                            f=`dirname $f`/
+                        done
+                    done   \
+                  | sort | uniq  \
+                  > $RSYNC_INC_PATH_PREFIX.$vmName
+                echo '- **' >> $RSYNC_INC_PATH_PREFIX.$vmName
                 ;;
         esac
                 
@@ -193,10 +73,16 @@ vmGuests () {
     done
 }
 
+                                        
 
-writeVmProcs () {
+writeVmProcs () { 
     modName=$1
     cat > ${PROC_PATH_PREFIX}.${modName} <<"__EOF__"
+    
+    createRsyncd_includes () {
+        local requestModule="$1"
+        echo "include from = $RSYNC_INC_PATH_PREFIX.$requestModule"
+    }
     
     module_rsync_init() {
         local requestModule="$1"
@@ -235,4 +121,5 @@ vmGuests
 
 mv $MOD_LIST $MOD_LIST_PATH
 cat $MOD_LIST_PATH
+
 

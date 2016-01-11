@@ -4,50 +4,14 @@
 # script to create a list of modules to be backed up
 ###############################################################
 . ${0%/*}/target.conf
-
-#-------------------------------------------------------------------------------
-# - data lines consist of two fields (moduleName, comment) separated by a tab
-#
-# - each comment may contain the following options
-#   method          scope: all            suppliedBy: targetHost (required)
-#   auto            scope: any            suppliedBy: targetHost (optional)
-#   relDS           scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
-#   origSrc         scope: zfs,zfs.rsync  suppliedBy: targetHost (optional)
-#   origHost        scope: rsync,tar      suppliedBy: targetHost (optional)
-#   origMod         scope: rsync,tar      suppliedBy: targetHost (optional)
-#   origName        scope: rsync,tar      suppliedBy: targetHost (optional)
-#   key             scope: rsync,tar      suppliedBy: targetHost (optional)
-#   lastSnap        scope: zfs,zfs.rsync  suppliedBy: backupServer (required)
-#   utcWindowStart  scope: any            suppliedBy: targetHost (optional)
-#   utcWindowEnd    scope: any            suppliedBy: targetHost (optional)
-#   prune           scope: any            suppliedBy: targetHost (optional)
-#
-# - additional options unused by the backupGT.server
-#   path      scope: rsync,tar      suppliedBy: targetHost (required)
-#   rootDS    scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
-#   tmpDS     scope: zfs.rsync      suppliedBy: targetHost (required)
-#-------------------------------------------------------------------------------
-
-localTime2utc() {
-    local ltime=$1
-    tzoffset=`date +%z`00
-    if echo "$tzoffset" | grep -q -- -; then
-        # tzoffset is negative
-        tzoffset=`echo $tzoffset | sed -e 's/^.//'`
-        printf "%06d" $(( (999$ltime + 999$tzoffset + 240000) % 240000 ))
-    else
-        # tzoffset is positive
-        tzoffset=`echo $tzoffset | sed -e 's/^.//'`
-        printf "%06d" $(( (999$ltime - 999$tzoffset + 240000) % 240000 ))
-    fi
-}
+. ${0%/*}/target.modlist.any
 
 
 ############################################################################
 # local modules
 ############################################################################
 cat <<-EOF
-	cDrive		auto=true method=rsync path=/cygdrive/c  prune=10,11,10,12,-1
+	cDrive		auto=true method=rsync path=/cygdrive/c
 EOF
 
 
