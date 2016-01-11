@@ -1,3 +1,9 @@
+#! /bin/sh
+
+
+############################################################################
+# environment variables for procs which follow
+############################################################################
 VM_TIMESTAMP=`$DATE_CMD`
 
 VM_HOST_VERSION=` vim-cmd hostsvc/hostsummary   \
@@ -9,6 +15,27 @@ VM_HOST_VERSION=` vim-cmd hostsvc/hostsummary   \
 ############################################################################
 # procs for esxi vm guests
 ############################################################################
+vm_guest_list () {
+    vim-cmd vmsvc/getallvms | grep ']' | while read line; do
+        local vmID=`   echo "$line" | awk '{print $1}' `
+        local vmName=` echo "$line" | sed -e 's/^[^ ]* *//'      \
+                                    -e 's/ *\[.*$//'       \
+                                    -e 's/ /\\ /g'         `
+        local vmxFile=`echo "$line" | sed -e 's/^.*] *//'           \
+                                    -e 's/\.vmx  .*/\.vmx/'   \
+                                    -e 's/^.*\///'            \
+                                    -e 's/ /\\ /g'            `
+        local vmxPath=`echo "$line" | sed -e 's/^[^[]*\[/\/vmfs\/volumes\//' \
+                                    -e 's/] */\//'                     \
+                                    -e 's/\.vmx  .*/\.vmx/'            \
+                                    -e 's/ /\\ /g'                     `
+        local vmxDir=${vmxPath%/*}
+        
+        echo $vmID $vmName $vmxFile $vmxPath $vmxDir
+    done
+}
+
+
 vm_snapshot_create () {
     local vmName="$1"
     local vmId=`vm_getVmId "$vmName"`
@@ -63,7 +90,7 @@ vm_snapshot_remove () {
                 # do the removal
                 vim-cmd vmsvc/snapshot.remove $vmId $removeChildren $snapLevel $snapshotIndex
                 ;;
-        5.* | 6.*)
+        5.* | 6.* )
                 # set the remove parameters
                 local snapId=`vm_getSnapId "$vmId" "$vmSnapName"`
                 local removeChildren=0
@@ -115,3 +142,107 @@ vm_getSnapId () {
                  | sed 's/[^0-9]*$//'               `
     echo $snapId
 }
+
+
+vm_getDatastores () {
+    ls -la /vmfs/volumes | \
+    grep ' \-> ' | \
+    awk '{print $(NF-2)}'
+}
+
+
+vm_getAllVmdk () {
+    #BUGS: requires all virtual disks to have a .vmdk extension
+    #      independent disks are EXCLUDED (which generally will also exclude ra
+    vmxPath="$1"
+    vmxDir="${1%/*}"
+    diskIds=` grep -iE '(scsi|ide)' "$vmxPath"  \
+            | grep -i "\.fileName = .*\.vmdk"   \
+            | sed 's/\..*//'                    `
+    echo "`sedRulesToReplaceGuidWithDatastoreName`" > ${TMP_DIR}/sedRules.$$
+    for diskId in $diskIds; do
+        if ! grep -qi "^${diskId}\.present =.*true" "$vmxPath"; then       #dev
+            continue
+        fi
+        if grep -qi "^${diskId}\.mode =.*independent" "$vmxPath"; then     #can
+            continue
+        fi
+        # list all vmdk files for the current diskId
+        baseVmdkFile=` grep -i "^${diskId}\.fileName =" "$vmxPath"  \
+                     | sed 's/^.* = *//'                            \
+                     | sed 's/^"//'                                 \
+                     | sed 's/"$//'                                 \
+                     | sed 's/\.vmdk$//'                            \
+                     | sed 's/[-][0-9][0-9][0-9][0-9][0-9][0-9]$//' `
+        if [ "`echo $baseVmdkFile | cut -b 1`" = "/" ]; then
+            ls ${baseVmdkFile}-*.vmdk | sed -f ${TMP_DIR}/sedRules.$$
+            ls ${baseVmdkFile}.vmdk   | sed -f ${TMP_DIR}/sedRules.$$
+        else
+            ls ${vmxDir}/${baseVmdkFile}-*.vmdk | sed -f ${TMP_DIR}/sedRules.$$
+            ls ${vmxDir}/${baseVmdkFile}.vmdk   | sed -f ${TMP_DIR}/sedRules.$$
+        fi
+    done
+    rm -f ${TMP_DIR}/sedRules.$$
+}
+
+
+sedRulesToReplaceGuidWithDatastoreName () {
+    ls -la /vmfs/volumes | \
+    grep ' \-> ' | \
+    awk '{print $NF, $(NF-2)}' | \
+    while read guid dsName; do
+        echo "s/$guid/$dsName/"
+    done
+}
+
+
+############################################################################
+# sample code bits
+############################################################################
+if [ "foo" = "bar" ]; then
+    echo
+#             generic.rsync )
+#                # write the modList entry
+#                {   printf "%s\t" "$vmName"
+#                    printf "%s "  "auto=true"
+#                    printf "%s "  "method=rsync"
+#                    printf "%s "  "path=/vmfs/volume"
+#                    echo ""
+#                } >>$MOD_LIST
+#
+#                # write the rsync filter file
+#                cp "$vmxPath" "$vmxPath.save"
+#                {   echo $vmxPath.save
+#                    ls $vmxDir/*.vmsd
+#                    ls $vmxDir/*.vmxf
+#                    ls $vmxDir/*-aux.xml
+#                    vm_getAllVmdk "$vmxPath"
+#                } | sed -e "s:^${vmxDir}/::"   \
+#                  | sed -e 's:^:+ :'   \
+#                  > $vmxDir/$RSYNC_FILTER_FILE
+#                echo '- **' >> $vmxDir/$RSYNC_FILTER_FILE
+#
+#                ;;
+
+#            generic.tar )
+#                # write the modList entry
+#                {   printf "%s\t" "$vmName"
+#                    printf "%s "  "auto=true"
+#                    printf "%s "  "method=tar"
+#                    printf "%s "  "path=/vmfs/volume"
+#                    echo ""
+#                } >>$MOD_LIST
+#
+#                # write the tar include file list
+#                cp "$vmxPath" "$vmxPath.save"
+#                {   echo $vmxPath.save
+#                    ls $vmxDir/*.vmsd
+#                    ls $vmxDir/*.vmxf
+#                    vm_getAllVmdk "$vmxPath"
+#                }  > $TAR_INC_PATH_PREFIX.$vmName
+#                # } | sed -e 's/ /\\\\ /g' > $TAR_INC_PATH_PREFIX.$vmName
+#
+#                ;;
+
+fi
+

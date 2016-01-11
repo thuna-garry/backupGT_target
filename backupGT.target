@@ -13,41 +13,6 @@ ELAPSED_START=`$ELAPSED_CMD`
 ###############################################################
 # utilities
 ###############################################################
-# [:blank:]   Blank characters: space and tab.
-# [:space:]  Space characters: tab, newline, vertical tab, form feed, carriage return, and space. 
-
-parseAssignment() {
-    #-------------
-    # find a variable assignment in a string and return the value assigned
-    # to the specified variable assuming an input string of the form
-    #     var_1=val_1  var_2=val_2 ...
-    # each var=val is separated from others by [:blank:]space
-    # if a value needs to have embedded whitespace then the whitespace can
-    #     be encoded with an ascii US (unit separator \037 \x1F), which will
-    #     be decoded with a space before the value is returned
-    #-------------
-    local var="$1"
-
-    #sed method: first delete any lines not containing $var
-    #            then get the value
-    #            then convert any \037 chars to spaces
-    sed -e "/${var}=/!d"                          \
-        -e "s/^.*${var}=\([^[:blank:]]*\).*/\1/"  \
-        -e "`printf 's/\037/ /g'`"
-}
-
-lop5offEnd () {
-    #bash/cut method (bash/cut not always available in restricted environments)
-    #echo $* | cut -d ' ' -f -$(( $# - 5 ))
-
-    #sh/sed method
-    list="$*"
-    for i in 1 2 3 4 5; do
-        list=`echo $list | sed 's/[^[:blank:]]*$//'`
-    done
-    echo $list
-}
-
 logHeader () {
     # pass as $* the original command line
     [ "$REQUEST_MODULE" = "_listModules" ] && printf "\n\n"
@@ -70,247 +35,6 @@ logFooter () {
 
 
 ######################################################################
-# rsync processing routines
-######################################################################
-module_rsync_init() {
-    return 0
-}
-module_rsync_fini() {
-    return 0
-}
-
-module_rsync_process() {
-    module_rsync_init "$REQUEST_MODULE"
-    
-    RSYNC_CMD="$RSYNC_CMD --server --daemon --config=$RSYNC_CONF_PATH_PREFIX.$REQUEST_MODULE ."
-    if [ "$?" -eq 0 ]; then
-        createRsyncd 
-        echo "`$DATE_CMD`: RSYNC_CMD = $RSYNC_CMD"                    >> $LOG_PATH
-        $RSYNC_CMD                                                   2>> $LOG_PATH
-        local rc=$?
-        echo "`$DATE_CMD`: rsync return code =" $rc                   >> $LOG_PATH
-        echo "`$DATE_CMD`: rsync return desc =" `rsyncErrorCode $rc`  >> $LOG_PATH
-        rm -f $RSYNC_CONF_PATH_PREFIX.$$
-    fi
-
-    module_rsync_fini "$REQUEST_MODULE"
-    return $rc
-}
-
-createRsyncd () {
-    local module=$REQUEST_MODULE
-    local path="`echo $REQUEST_PARMS | parseAssignment path`"
-
-    if [ -z "$path" ]; then
-        echo "ERROR: protocol violated MODULE_SPEC missing 'path' parameter" | tee -a $LOG_PATH 1>&2
-        exit 1
-    fi
-    {
-        echo ""
-        echo "[ $module ]"
-        echo "path = $path"
-       #echo "comment = $comment"
-       #echo "max connections = 2"
-        echo "lock file = /tmp/lock.$module"
-        echo "use chroot = false"
-        echo "read only = true"
-        echo "list = true"
-        echo "uid = 0"
-        echo "gid = 0"
-        echo "timeout = 600"
-        echo "filter = dir-merge /$RSYNC_FILTER_FILE"
-        echo ""
-    } > $RSYNC_CONF_PATH_PREFIX.$module
-    cat $RSYNC_CONF_PATH_PREFIX.$module >>$LOG_PATH
-}
-
-
-rsyncErrorCode () {
-    case $1 in
-        0)  echo 'Success' ;;
-        1)  echo 'Syntax or usage error' ;;
-        2)  echo 'Protocol incompatibility' ;;
-        3)  echo 'Errors selecting input/output files, dirs' ;;
-        4)  echo 'Requested action not supported: an attempt was made to manipulate '   \
-                 '64-bit files on a platform that cannot support them; or an option '   \
-                 'was specified that is supported by the client and not by the server.' ;;
-        5)  echo 'Error starting client-server protocol' ;;
-        6)  echo 'Daemon unable to append to log-file' ;;
-        10) echo 'Error in socket I/O' ;;
-        11) echo 'Error in file I/O' ;;
-        12) echo 'Error in rsync protocol data stream' ;;
-        13) echo 'Errors with program diagnostics' ;;
-        14) echo 'Error in IPC code' ;;
-        20) echo 'Received SIGUSR1 or SIGINT' ;;
-        21) echo 'Some error returned by CWwaitpid\(\)' ;;
-        22) echo 'Error allocating core memory buffers' ;;
-        23) echo 'Partial transfer due to error' ;;
-        24) echo 'Partial transfer due to vanished source files' ;;
-        25) echo 'The --max-delete limit stopped deletions' ;;
-        30) echo 'Timeout in data send/receive' ;;
-        35) echo 'Timeout waiting for daemon connectio' ;;
-    esac
-}
-
-
-######################################################################
-# tar processing routines
-######################################################################
-module_tar_init() {
-    return 0
-}
-module_tar_fini() {
-    return 0
-}
-
-module_tar_process() {
-    module_tar_init "$REQUEST_MODULE"
-    
-    if [ "$?" -eq 0 ]; then
-        echo "`$DATE_CMD`: beginning tar "                          >> $LOG_PATH
-        echo "`$DATE_CMD`: files to include "                       >> $LOG_PATH
-        cat "${TAR_INC_PATH_PREFIX}.${REQUEST_MODULE}" \
-            | sed 's/^/    /'                                       >> $LOG_PATH
-        $TAR_CMD `cat "${TAR_INC_PATH_PREFIX}.${REQUEST_MODULE}"`  2>> $LOG_PATH
-        local rc=$?
-        echo "`$DATE_CMD`: tar return code =" $rc                   >> $LOG_PATH
-    fi
-    
-    module_tar_fini "$REQUEST_MODULE"
-    return $rc
-}
-
-
-######################################################################
-# zfs processing routines
-######################################################################
-module_zfs_init() {
-    return 0
-}
-module_zfs_fini() {
-    return 0
-}
-
-module_zfs_process() {
-    module_zfs_init "$REQUEST_MODULE"
-
-    if [ "$?" -eq 0 ]; then
-        local rootDS=`       echo "$REQUEST_PARMS" | parseAssignment rootDS`
-        local tmpDS=`        echo "$REQUEST_PARMS" | parseAssignment tmpDS`
-        local relDS=`        echo "$REQUEST_PARMS" | parseAssignment relDS`
-        local lastSnapLabel=`echo "$REQUEST_PARMS" | parseAssignment lastSnap`
-
-        if [ -z "$rootDS" ]; then
-            echo "ERROR: protocol violated MODULE_SPEC missing 'rootDS' parameter" | tee -a $LOG_PATH 1>&2
-            exit 1
-        fi
-        if [ -z "$tmpDS" ]; then
-            echo "ERROR: protocol violated MODULE_SPEC missing 'tmpDS' parameter" | tee -a $LOG_PATH 1>&2
-            exit 1
-        fi
-        if [ -z "$relDS" ]; then
-            echo "ERROR: protocol violated MODULE_SPEC missing 'relDS' parameter" | tee -a $LOG_PATH 1>&2
-            exit 1
-        fi
-
-        local rc=0
-        local modDS="$rootDS/$relDS"
-        local localLastSnapLabel=""
-
-        echo "`$DATE_CMD`: Request:"                                >> $LOG_PATH
-        echo "`$DATE_CMD`:     root dataset      = $rootDS"         >> $LOG_PATH
-        echo "`$DATE_CMD`:     relative dataset  = $relDS"          >> $LOG_PATH
-        echo "`$DATE_CMD`:     lastSnapLabel     = $lastSnapLabel"  >> $LOG_PATH
-
-        if [ -z "`zfs list -H -o name $modDS`" ]; then
-            echo "`$DATE_CMD`: requested dataset $relDS does not exist"  >> $LOG_PATH
-            rc=1
-        
-        else
-            if [ "`zfs get -H -o value $ZFS_UPROP_IS_BACKUP $modDS 2>/dev/null`" = "yes" ]; then
-                # local dataset is a backup from some other target so don't create
-                # a local snapshot just use the latest present.
-                #
-                # If the dataset is marked as backup then there will be snapshots since
-                #   a) it was previously received from a target running zfs
-                #   b) or generated by the local backupGT_server script after successful
-                #      completion of a module backup
-                localLastSnapLabel=` zfs list -H -o name -t snapshot -d 1 -s name "$modDS" \
-                                   | tail -1 \
-                                   | cut -d '@' -f 2 `
-                echo "`$DATE_CMD`: target is not originating ZFS source"  >> $LOG_PATH
-                echo "`$DATE_CMD`:     using latest snapshot on target $modDS@$localLastSnapLabel"  >> $LOG_PATH
-            else
-                localLastSnapLabel=`$DATE_CMD`_X
-                echo "`$DATE_CMD`: target is the originating ZFS source"  >> $LOG_PATH
-                echo "`$DATE_CMD`:     creating new snapshot $modDS@$localLastSnapLabel"  >> $LOG_PATH
-                zfs snapshot "$modDS@$localLastSnapLabel"
-            fi
-
-            # does the server supplied lastSnapLabel exist
-            if [ -n "$lastSnapLabel" ]; then
-		lastSnapExists=`zfs list -H -o name -t snapshot -d 1 -s name "$modDS" | grep "@${lastSnapLabel}$"`
-                [ -z "$lastSnapExists" ] && \
-                    echo "`$DATE_CMD`: Requested lastSnapLabel $lastSnapLabel does not exist on target"  >> $LOG_PATH
-            fi
-
-            # do the zfs send
-            if [ -z "$lastSnapExists" ]; then
-                echo     "`$DATE_CMD`: commencing FULL send               "  >> $LOG_PATH
-                case $REQUEST_METHOD in
-                    zfs)
-                        echo "`$DATE_CMD`: streaming export to remote end "  >> $LOG_PATH
-                        zfs send $ZFS_SEND_OPTS "$modDS@$localLastSnapLabel"
-                        ;;
-                    zfs.rsync)
-                        modTmpDir=`zfsCheckModTmp $tmpDS`
-                        echo "`$DATE_CMD`: writing export to $modTmpDir/$REQUEST_MODULE.snapExport.gz "  >> $LOG_PATH
-                        zfs send $ZFS_SEND_OPTS "$modDS@$localLastSnapLabel" | gzip -9 > $modTmpDir/$REQUEST_MODULE.snapExport.gz
-                        module_rsync_process 
-                        #todo       rm -f $modTmpDir/$REQUEST_MODULE.snapExport.gz
-                        ;;
-                esac
-                rc=$?
-        
-            else
-                echo "`$DATE_CMD`: commencing INCREMENTAL send               "  >> $LOG_PATH
-                case $REQUEST_METHOD in
-                    zfs)
-                        echo "`$DATE_CMD`: streaming export to remote end "  >> $LOG_PATH
-                        zfs send $ZFS_SEND_OPTS -I "$modDS@$lastSnapLabel" "$modDS@$localLastSnapLabel"
-                        ;;
-                    zfs.rsync)
-                        modTmpDir=`zfsCheckModTmp $tmpDS`
-                        echo "`$DATE_CMD`: writing export to $modTmpDir/$REQUEST_MODULE.snapExport.gz "  >> $LOG_PATH
-                        zfs send $ZFS_SEND_OPTS -I "$modDS@$lastSnapLabel" "$modDS@$localLastSnapLabel" | gzip -9 > $modTmpDir/$REQUEST_MODULE.snapExport.gz
-                        module_rsync_process
-                        #todo      rm -f $modTmpDir/$REQUEST_MODULE.snapExport.gz
-                        ;;
-                esac
-                rc=$?
-            fi
-        fi
-    fi
-
-    module_zfs_fini "$REQUEST_MODULE"
-    return $rc
-}
-
-
-zfsCheckModTmp () {
-    local tmpDS=$1
-    local modTmpDir
-
-    if [ -z "`zfs list -H -r -o name $tmpDS 2>/dev/null | grep $tmpDS`" ]; then
-        zfs create -o quota=$TMP_DS_MAX_SIZE $tmpDS
-    fi
-    modTmpDir="`zfs list -H -o mountpoint $tmpDS`"/$REQUEST_MODULE
-    mkdir -p -m 750 $modTmpDir
-    echo $modTmpDir
-}
-
-
-######################################################################
 # main
 #  - if we are in a restricted environment there may be no SSH_ORIGINAL_COMMAND
 #    so we have to re-read the module spec from the modList 
@@ -318,17 +42,10 @@ zfsCheckModTmp () {
 #    but if rsync is being used it will have 5 parameters
 #    '<hostname> rsync --server --daemon .' appended to it
 ###############################################################
-# ensure backupDevel server can access us #debug todo
-#if grep -q backupDevel /root/.ssh/authorized_keys; then
-#    echo nothing to do > /dev/null
-#else
-#    echo cat ${0%/*}/examples/target.backupDevel >> /root/.ssh/authorized_keys
-#fi
-
 if [ -n "$SSH_ORIGINAL_COMMAND" ]; then
     MODULE_SPEC="$SSH_ORIGINAL_COMMAND"
 elif [ -n "$KEY" ]; then
-    # restricted environment but caller supplied key so run target.modlist
+    # restricted environment but caller supplied key so run target.modList
     #   and search for the line with the specified key
     # append a space to each key so that key=1 doesn't match key=11, key=123, etc
     MODULE_SPEC="`${0%/*}/target.modList | sed 's/\(key=[0-9]*\)/\1 /' | grep 'key='$KEY' '`"
@@ -338,20 +55,13 @@ else
 fi
 
 if echo "$MODULE_SPEC" | grep -vq '	' ; then
-    {
-        echo; echo "===== error ======================================================="
-        echo "ERROR: protocol violated MODULE_SPEC missing tab delimeter"
-        env | grep SSH
-        echo "===== error ======================================================="; echo
-    } | tee -a $LOG_PATH 1>&2
-    exit 1
+    echo "ERROR: protocol violated MODULE_SPEC missing tab delimeter" | tee -a $LOG_PATH 1>&2
 fi
+
 
 REQUEST_MODULE=`echo "$MODULE_SPEC" | sed 's/\([^[:blank:]]*\)	*\(.*\)/\1/'`   #cut -d "	" -f 1
 REQUEST_PARMS=` echo "$MODULE_SPEC" | sed 's/\([^[:blank:]]*\)	*\(.*\)/\2/'`   #cut -d "	" -f 2
 REQUEST_METHOD=`echo $REQUEST_PARMS | parseAssignment method`
-
-LOG_PATH=${LOG_PATH}.${REQUEST_MODULE}
 logHeader "$0" "$@"
 
 if [ "$REQUEST_MODULE" =  "_listModules" ]; then
@@ -367,9 +77,9 @@ else
         . "${PROC_PATH_PREFIX}.${REQUEST_MODULE}"
     fi
     case $REQUEST_METHOD in
-        rsync)          module_rsync_process ;;
-        tar)            module_tar_process   ;;
-        zfs|zfs.rsync)  module_zfs_process   ;;
+        rsync)          module_rsync_process  ;;
+        tar)            module_tar_process    ;;
+        zfs|zfs.rsync)  module_zfs_process    ;;
     esac
 fi
 rc=$?

@@ -1,0 +1,7 @@
+#! /bin/sh
+
+RSYNC_CMD=${0%/*}/rsync.esx/rsync-static
+TAR_CMD="tar cvf -"
+
+SNAP_WAIT=5  #minutes to wait for snapshot creation
+

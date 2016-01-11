@@ -4,43 +4,7 @@
 # script to create a list of modules to be backed up
 ###############################################################
 . ${0%/*}/target.conf
-
-#-------------------------------------------------------------------------------
-# - data lines consist of two fields (moduleName, comment) separated by a tab
-#
-# - each comment may contain the following options
-#   method          scope: all            suppliedBy: targetHost (required)
-#   auto            scope: any            suppliedBy: targetHost (optional)
-#   relDS           scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
-#   origSrc         scope: zfs,zfs.rsync  suppliedBy: targetHost (optional)
-#   origHost        scope: rsync,tar      suppliedBy: targetHost (optional)
-#   origMod         scope: rsync,tar      suppliedBy: targetHost (optional)
-#   origName        scope: rsync,tar      suppliedBy: targetHost (optional)
-#   key             scope: rsync,tar      suppliedBy: targetHost (optional)
-#   lastSnap        scope: zfs,zfs.rsync  suppliedBy: backupServer (required)
-#   utcWindowStart  scope: any            suppliedBy: targetHost (optional)
-#   utcWindowEnd    scope: any            suppliedBy: targetHost (optional)
-#   prune           scope: any            suppliedBy: targetHost (optional)
-#
-# - additional options unused by the backupGT.server
-#   path      scope: rsync,tar      suppliedBy: targetHost (required)
-#   rootDS    scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
-#   tmpDS     scope: zfs.rsync      suppliedBy: targetHost (required)
-#-------------------------------------------------------------------------------
-
-localTime2utc() {
-    local ltime=$1
-    tzoffset=`date +%z`00
-    if echo "$tzoffset" | grep -q -- -; then
-        # tzoffset is negative
-        tzoffset=`echo $tzoffset | sed -e 's/^.//'`
-        printf "%06d" $(( (999$ltime + 999$tzoffset + 240000) % 240000 ))
-    else
-        # tzoffset is positive
-        tzoffset=`echo $tzoffset | sed -e 's/^.//'`
-        printf "%06d" $(( (999$ltime - 999$tzoffset + 240000) % 240000 ))
-    fi
-}
+. ${0%/*}/target.modList.any
 
 
 ############################################################################
@@ -80,20 +44,12 @@ if [ -n "$zfsDatasets" ]; then
         relDS=`     echo $dsName | sed "s:^$ZFS_ROOT_DS/::"`
         relDsFixed=`echo $relDS  | tr '/' '+'`
         
-        if [ "`zfs get -H -o value $ZFS_UPROP_IS_BACKUP $dsName 2>/dev/null`" = "yes" ]; then
-            origSrc="no"
-        else
-            origSrc="yes"
-        fi
-
         printf "%s\t" $relDsFixed
-        printf "%s "     "method=zfs"
-        printf "%s "     "auto=true"
-        printf "%s "     "rootDS=$ZFS_ROOT_DS"
-        printf "%s "     "relDS=$relDS"
-        printf "%s "     "origSrc=$origSrc"
-        printf "%s "     "tmpDS=$ZFS_TMP_DS"
-        printf "%s "     "prune=10,11,10,12,-1"
+        printf " %s"     "method=zfs"
+        printf " %s"     "auto=true"
+        printf " %s"     "rootDS=$ZFS_ROOT_DS"
+        printf " %s"     "relDS=$relDS"
+        printf " %s"     "tmpDS=$ZFS_TMP_DS"
         printf "\n"
     done
 fi

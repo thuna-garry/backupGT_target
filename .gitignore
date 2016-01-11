@@ -1,4 +1,2 @@
-*.log
-procs.*
-target.modList
-target.conf
+/target.conf
+/target.modList

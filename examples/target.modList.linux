@@ -4,52 +4,17 @@
 # script to create a list of modules to be backed up
 ###############################################################
 . ${0%/*}/target.conf
-
-#-------------------------------------------------------------------------------
-# - data lines consist of two fields (moduleName, comment) separated by a tab
-#
-# - each comment may contain the following options
-#   method          scope: all            suppliedBy: targetHost (required)
-#   auto            scope: any            suppliedBy: targetHost (optional)
-#   relDS           scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
-#   origSrc         scope: zfs,zfs.rsync  suppliedBy: targetHost (optional)
-#   origHost        scope: rsync,tar      suppliedBy: targetHost (optional)
-#   origMod         scope: rsync,tar      suppliedBy: targetHost (optional)
-#   origName        scope: rsync,tar      suppliedBy: targetHost (optional)
-#   key             scope: rsync,tar      suppliedBy: targetHost (optional)
-#   lastSnap        scope: zfs,zfs.rsync  suppliedBy: backupServer (required)
-#   utcWindowStart  scope: any            suppliedBy: targetHost (optional)
-#   utcWindowEnd    scope: any            suppliedBy: targetHost (optional)
-#   prune           scope: any            suppliedBy: targetHost (optional)
-#
-# - additional options unused by the backupGT.server
-#   path      scope: rsync,tar      suppliedBy: targetHost (required)
-#   rootDS    scope: zfs,zfs.rsync  suppliedBy: targetHost (required)
-#   tmpDS     scope: zfs.rsync      suppliedBy: targetHost (required)
-#-------------------------------------------------------------------------------
-
-localTime2utc() {
-    local ltime=$1
-    tzoffset=`date +%z`00
-    if echo "$tzoffset" | grep -q -- -; then
-        # tzoffset is negative
-        tzoffset=`echo $tzoffset | sed -e 's/^.//'`
-        printf "%06d" $(( (999$ltime + 999$tzoffset + 240000) % 240000 ))
-    else
-        # tzoffset is positive
-        tzoffset=`echo $tzoffset | sed -e 's/^.//'`
-        printf "%06d" $(( (999$ltime - 999$tzoffset + 240000) % 240000 ))
-    fi
-}
+. ${0%/*}/target.modList.any
 
 
 ############################################################################
 # local modules
 ############################################################################
 cat <<-EOF
-	root		auto=true method=rsync path=/root          prune=0,1,3,0,-1
-	etc		auto=true method=rsync path=/etc           prune=0,1,3,0,-1
-	usrLocalEtc	auto=true method=rsync path=/usr/local/etc prune=0,1,3,0,-1
+	root		auto=true method=rsync path=/root
+	etc		auto=true method=rsync path=/etc
+	usrLocalEtc	auto=true method=rsync path=/usr/local/etc
+	homeBackupGT	auto=true method=rsync path=/home/backupGT
 EOF
 
 

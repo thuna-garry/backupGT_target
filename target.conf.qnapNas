@@ -1,0 +1,5 @@
+#! /bin/sh
+
+RSYNC_CMD="rsync --sever-mode=0 "
+TAR_CMD="tar cvf -"
+
