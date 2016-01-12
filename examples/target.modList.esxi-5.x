@@ -16,10 +16,10 @@ localModules () {
     local hostName=`hostname -f`
     local origHost=${hostName%.*.*}
     cat <<-__EOF__ >>$MOD_LIST
-	keysRoot	auto=true method=rsync origHost=$origHost path=/etc/ssh/keys-root/
-	disks		auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreLocal/_disks           
-	templates	auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreLocal/_templates       
-	incomminBackups	auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreLocal/incommingBackups 
+	keysRoot		auto=true method=rsync origHost=$origHost path=/etc/ssh/keys-root/
+	disks			auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreLocal/_disks           
+	templates		auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreLocal/_templates       
+	incommingBackups	auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreLocal/incommingBackups 
 	__EOF__
 }
 
