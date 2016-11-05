@@ -1,22 +1,2 @@
 #! /bin/sh
 
-
-############################################################################
-# utility routines
-############################################################################
-
-localTime2utc() {
-    local ltime=$1
-    tzoffset=`date +%z`00
-    if echo "$tzoffset" | grep -q -- -; then
-        # tzoffset is negative
-        tzoffset=`echo $tzoffset | sed -e 's/^.//'`
-        printf "%06d" $(( (10#$ltime + 10#$tzoffset + 240000) % 240000 ))
-    else
-        # tzoffset is positive
-        tzoffset=`echo $tzoffset | sed -e 's/^.//'`
-        printf "%06d" $(( (10#$ltime - 10#$tzoffset + 240000) % 240000 ))
-    fi
-}
-
-
