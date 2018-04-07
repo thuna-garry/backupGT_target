@@ -209,15 +209,15 @@ module_zfs_process() {
         local lastSnapLabel=`echo "$REQUEST_PARMS" | parseAssignment lastSnap`
 
         if [ -z "$rootDS" ]; then
-            echo "ERROR: protocol violated MODULE_SPEC missing 'rootDS' parameter" | tee -a $LOG_PATH 1>&2
+            echo "ERROR: protocol violated MODULE_SPEC missing 'rootDS' parameter"  | tee -a $LOG_PATH 1>&2
             exit 1
         fi
         if [ -z "$tmpDS" ]; then
-            echo "ERROR: protocol violated MODULE_SPEC missing 'tmpDS' parameter" | tee -a $LOG_PATH 1>&2
+            echo "ERROR: protocol violated MODULE_SPEC missing 'tmpDS' parameter"  | tee -a $LOG_PATH 1>&2
             exit 1
         fi
         if [ -z "$relDS" ]; then
-            echo "ERROR: protocol violated MODULE_SPEC missing 'relDS' parameter" | tee -a $LOG_PATH 1>&2
+            echo "ERROR: protocol violated MODULE_SPEC missing 'relDS' parameter"  | tee -a $LOG_PATH 1>&2
             exit 1
         fi
 
@@ -225,18 +225,18 @@ module_zfs_process() {
         local modDS="$rootDS/$relDS"
         local localLastSnapLabel=""
 
-        echo "`$DATE_CMD`: Request:"                                >> $LOG_PATH
-        echo "`$DATE_CMD`:     root dataset      = $rootDS"         >> $LOG_PATH
-        echo "`$DATE_CMD`:     relative dataset  = $relDS"          >> $LOG_PATH
-        echo "`$DATE_CMD`:     lastSnapLabel     = $lastSnapLabel"  >> $LOG_PATH
+        echo "`$DATE_CMD`: Request (target.procs.any:target.procs.any):"  | tee -a $LOG_PATH 1>&2
+        echo "`$DATE_CMD`:     root dataset      = $rootDS"               | tee -a $LOG_PATH 1>&2
+        echo "`$DATE_CMD`:     relative dataset  = $relDS"                | tee -a $LOG_PATH 1>&2
+        echo "`$DATE_CMD`:     lastSnapLabel     = $lastSnapLabel"        | tee -a $LOG_PATH 1>&2
 
         if [ -z "`zfs list -H -o name $modDS`" ]; then
-            echo "`$DATE_CMD`: requested dataset $relDS does not exist"  >> $LOG_PATH
+            echo "`$DATE_CMD`: requested dataset $relDS does not exist"   | tee -a $LOG_PATH 1>&2
             rc=1
         
         else
             if [ "`zfs get -H -o value $ZFS_UPROP_IS_BACKUP $modDS 2>/dev/null`" = "yes" ]; then
-                # local dataset is a backup from some other target so don't create
+                # requested dataset is a backup from some other target so don't create
                 # a local snapshot just use the latest present.
                 #
                 # If the dataset is marked as backup then there will be snapshots since
@@ -246,12 +246,12 @@ module_zfs_process() {
                 localLastSnapLabel=` zfs list -H -o name -t snapshot -d 1 -s name "$modDS" \
                                    | tail -1 \
                                    | cut -d '@' -f 2 `
-                echo "`$DATE_CMD`: target is not originating ZFS source"  >> $LOG_PATH
-                echo "`$DATE_CMD`:     using latest snapshot on target $modDS@$localLastSnapLabel"  >> $LOG_PATH
+                echo "`$DATE_CMD`: target is not the originating ZFS source"                        | tee -a $LOG_PATH 1>&2
+                echo "`$DATE_CMD`:     using latest snapshot on target $modDS@$localLastSnapLabel"  | tee -a $LOG_PATH 1>&2
             else
                 localLastSnapLabel=`$DATE_CMD`_X
-                echo "`$DATE_CMD`: target is the originating ZFS source"  >> $LOG_PATH
-                echo "`$DATE_CMD`:     creating new snapshot $modDS@$localLastSnapLabel"  >> $LOG_PATH
+                echo "`$DATE_CMD`: target is the originating ZFS source"                            | tee -a $LOG_PATH 1>&2
+                echo "`$DATE_CMD`:     creating new snapshot $modDS@$localLastSnapLabel"            | tee -a $LOG_PATH 1>&2
                 zfs snapshot "$modDS@$localLastSnapLabel"
             fi
 
@@ -259,21 +259,22 @@ module_zfs_process() {
             if [ -n "$lastSnapLabel" ]; then
 		lastSnapExists=`zfs list -H -o name -t snapshot -d 1 -s name "$modDS" | grep "@${lastSnapLabel}$"`
                 [ -z "$lastSnapExists" ] && \
-                    echo "`$DATE_CMD`: Requested lastSnapLabel $lastSnapLabel does not exist on target"  >> $LOG_PATH
+                    echo "`$DATE_CMD`: Requested lastSnapLabel $lastSnapLabel does not exist on target"  | tee -a $LOG_PATH 1>&2
             fi
 
             # do the zfs send
             if [ -z "$lastSnapExists" ]; then
-                echo     "`$DATE_CMD`: commencing FULL send               "  >> $LOG_PATH
+                echo     "`$DATE_CMD`: Commencing FULL send               "  | tee -a $LOG_PATH 1>&2
                 case $REQUEST_METHOD in
                     zfs)
-                        echo "`$DATE_CMD`: streaming export to remote end "  >> $LOG_PATH
+                        echo "`$DATE_CMD`: streaming export to remote end "  | tee -a $LOG_PATH 1>&2
                         zfs send $ZFS_SEND_OPTS "$modDS@$localLastSnapLabel"
                         ;;
                     zfs.rsync)
                         modTmpDir=`zfsCheckModTmp $tmpDS`
-                        echo "`$DATE_CMD`: writing export to $modTmpDir/$REQUEST_MODULE.snapExport.gz "  >> $LOG_PATH
+                        echo "`$DATE_CMD`: writing export to $modTmpDir/$REQUEST_MODULE.snapExport.gz "  | tee -a $LOG_PATH 1>&2
                         zfs send $ZFS_SEND_OPTS "$modDS@$localLastSnapLabel" | gzip -9 > $modTmpDir/$REQUEST_MODULE.snapExport.gz
+                        echo "`$DATE_CMD`: making export available - starting rsync "                    | tee -a $LOG_PATH 1>&2
                         module_rsync_process 
                         #todo       rm -f $modTmpDir/$REQUEST_MODULE.snapExport.gz
                         ;;
@@ -281,16 +282,17 @@ module_zfs_process() {
                 rc=$?
         
             else
-                echo "`$DATE_CMD`: commencing INCREMENTAL send               "  >> $LOG_PATH
+                echo "`$DATE_CMD`: commencing INCREMENTAL send              "  | tee -a $LOG_PATH 1>&2
                 case $REQUEST_METHOD in
                     zfs)
-                        echo "`$DATE_CMD`: streaming export to remote end "  >> $LOG_PATH
+                        echo "`$DATE_CMD`: streaming export to remote end "    | tee -a $LOG_PATH 1>&2
                         zfs send $ZFS_SEND_OPTS -I "$modDS@$lastSnapLabel" "$modDS@$localLastSnapLabel"
                         ;;
                     zfs.rsync)
                         modTmpDir=`zfsCheckModTmp $tmpDS`
-                        echo "`$DATE_CMD`: writing export to $modTmpDir/$REQUEST_MODULE.snapExport.gz "  >> $LOG_PATH
+                        echo "`$DATE_CMD`: writing export to $modTmpDir/$REQUEST_MODULE.snapExport.gz "  | tee -a $LOG_PATH 1>&2
                         zfs send $ZFS_SEND_OPTS -I "$modDS@$lastSnapLabel" "$modDS@$localLastSnapLabel" | gzip -9 > $modTmpDir/$REQUEST_MODULE.snapExport.gz
+                        echo "`$DATE_CMD`: making export available - starting rsync "                    | tee -a $LOG_PATH 1>&2
                         module_rsync_process
                         #todo      rm -f $modTmpDir/$REQUEST_MODULE.snapExport.gz
                         ;;
