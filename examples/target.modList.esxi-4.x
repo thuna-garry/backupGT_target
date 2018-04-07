@@ -16,11 +16,11 @@ localModules () {
     local hostName=`hostname -f`
     local origHost=${hostName%.*.*}
     cat <<-__EOF__ >>$MOD_LIST
-	opt		auto=true method=rsync origHost=$origHost path=/opt                                          key=$((++kc))
-	dotSsh		auto=true method=rsync origHost=$origHost path=/.ssh                                         key=$((++kc))
-	disks		auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreLocal/_disks           key=$((++kc))
-	templates	auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreLocal/_templates       key=$((++kc))
-	incomminBackups	auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreLocal/incommingBackups key=$((++kc))
+	opt			auto=true method=rsync origHost=$origHost path=/opt                                          key=$((++kc))
+	dotSsh			auto=true method=rsync origHost=$origHost path=/.ssh                                         key=$((++kc))
+	disks			auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreLocal/_disks           key=$((++kc))
+	templates		auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreLocal/_templates       key=$((++kc))
+	incomingBackups		auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreLocal/incomingBackups  key=$((++kc))
 	__EOF__
 }
 
