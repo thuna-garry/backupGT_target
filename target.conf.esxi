@@ -1,5 +1,7 @@
 #! /bin/sh
 
+#RSYNC_CMD=${0%/*}/rsync.esx/xsibackup-rsync
+#RSYNC_CMD=${0%/*}/../xsi-dir/bin/xsibackup-rsync
 RSYNC_CMD=${0%/*}/rsync.esx/xsibackup-rsync
 TAR_CMD="tar cvf -"
 
