@@ -19,7 +19,7 @@ localModules () {
 	keysRoot		auto=true method=rsync origHost=$origHost path=/etc/ssh/keys-root/
 	disks			auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreLocal/_disks           
 	templates		auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreLocal/_templates       
-	incommingBackups	auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreLocal/incommingBackups 
+	incomingBackups		auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreLocal/incomingBackups 
 	__EOF__
 }
 
