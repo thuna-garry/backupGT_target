@@ -138,6 +138,7 @@ createRsyncd () {
         echo "uid = 0"
         echo "gid = 0"
         echo "timeout = 600"
+        echo "filter = dir-merge /$RSYNC_FILTER_FILE"
         createRsyncd_includes $module
         echo ""
     } > $RSYNC_CONF_PATH_PREFIX.$module
@@ -229,7 +230,7 @@ module_zfs_process() {
         local lastSnapLabel=`echo "$REQUEST_PARMS" | parseAssignment lastSnap`
 
         if [ -z "$rootDS" ]; then
-            echo "ERROR: protocol violated MODULE_SPEC missing 'rootDS' parameter"  | tee -a $LOG_PATH 1>&2
+            echo "ERROR: protocol violated MODULE_SPEC missing 'rootDS' parameter" | tee -a $LOG_PATH 1>&2
             exit 1
         fi
         if [ -z "$tmpDS" ]; then
@@ -302,7 +303,7 @@ module_zfs_process() {
                 rc=$?
         
             else
-                echo "`$DATE_CMD`: commencing INCREMENTAL send              "  | tee -a $LOG_PATH 1>&2
+                echo "`$DATE_CMD`: Commencing INCREMENTAL send              "  | tee -a $LOG_PATH 1>&2
                 case $REQUEST_METHOD in
                     zfs)
                         echo "`$DATE_CMD`: streaming export to remote end "    | tee -a $LOG_PATH 1>&2
