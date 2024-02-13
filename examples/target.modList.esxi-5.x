@@ -1,4 +1,4 @@
-#! /bin/sh
+#! /bin/sh 
 
 ###############################################################
 # script to create a list of modules to be backed up
@@ -14,16 +14,16 @@ MOD_LIST=$MOD_LIST_PATH.$$
 ############################################################################
 localModules () {
     local hostName=`hostname -f`
-    #local origHost=${hostName%.*.*}
-    local origHost=${hostName}
+    local origHost=${hostName%.*.*}
     cat <<-__EOF__ >>$MOD_LIST
-	keysRoot		auto=true method=rsync origHost=$origHost path=/etc/ssh/keys-root/
-	disks			auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreBoot/_disks
-	incomingBackups		auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreBoot/incomingBackups
+	keysRoot	auto=true method=rsync origHost=$origHost path=/etc/ssh/keys-root/
+	disks		auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreLocal/_disks           
+	templates	auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreLocal/_templates       
+	incomminBackups	auto=true method=rsync origHost=$origHost path=/vmfs/volumes/datastoreLocal/incommingBackups 
 	__EOF__
 }
 
-
+                            
 ############################################################################
 # vm guests
 ############################################################################
@@ -45,7 +45,7 @@ vmGuests () {
                 } >>$MOD_LIST
 
                 cp "$vmxPath" "$vmxPath.save"
-
+                
                 # gather the files to be included
                 {
                     echo $vmxPath.save
@@ -58,7 +58,7 @@ vmGuests () {
                   | while read f; do
                         #for each file need to include each parent directory
                         while [ "$f" != "//" ]; do
-                            echo "+ ${f#/}"
+                            echo "+ $f"
                             f=`dirname $f`/
                         done
                     done   \
@@ -67,25 +67,26 @@ vmGuests () {
                 echo '- **' >> $RSYNC_INC_PATH_PREFIX.$vmName
                 ;;
         esac
-
+                
         # write the procs file for this module/vmGuest
         writeVmProcs $vmName
     done
 }
 
+                                        
 
-
-writeVmProcs () {
+writeVmProcs () { 
     modName=$1
     cat > ${PROC_PATH_PREFIX}.${modName} <<"__EOF__"
-
+    
     createRsyncd_includes () {
         local requestModule="$1"
         echo "include from = $RSYNC_INC_PATH_PREFIX.$requestModule"
     }
-
+    
     module_rsync_init() {
         local requestModule="$1"
+        vm_snapshot_remove_all "$requestModule"
         trap 'vm_snapshot_remove "$requestModule"' 0 1 2 3 4 15
         vm_snapshot_create "$requestModule"
     }
@@ -98,6 +99,7 @@ writeVmProcs () {
 
     module_tar_init() {
         local requestModule="$1"
+        vm_snapshot_remove_all "$requestModule"
         trap 'vm_snapshot_remove "$requestModule"' 0 1 2 3 4 15
         vm_snapshot_create "$requestModule"
     }
